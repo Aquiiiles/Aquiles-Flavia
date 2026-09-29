@@ -6,17 +6,17 @@ window.WEDDING_CONFIG = {
   apiUrl: "",
 
   // Data/hora da cerimônia no formato ISO (usado na contagem regressiva).
-  date: "2027-05-15T16:00:00-03:00",
-  dateLabel: "15 de maio de 2027",
+  date: "2027-08-19T16:00:00-03:00",
+  dateLabel: "19 de agosto de 2027",
   timeLabel: "16h00",
 
-  venueName: "Local a definir",
-  venueAddress: "Endereço a definir",
-  mapsUrl: "", // link do Google Maps (opcional)
+  venueName: "Villa Fontana",
+  venueAddress: "Rio de Janeiro - RJ",
+  mapsUrl: "https://www.google.com/maps/search/?api=1&query=Villa+Fontana+Rio+de+Janeiro",
 
   dressCode: "Traje esporte fino",
 
-  rsvpDeadlineLabel: "15 de abril de 2027",
+  rsvpDeadlineLabel: "19 de julho de 2027",
 
   // Número máximo de acompanhantes por convite.
   maxCompanions: 5,
