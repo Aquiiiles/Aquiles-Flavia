@@ -16,7 +16,7 @@ window.WEDDING_CONFIG = {
 
   dressCode: "Traje esporte fino",
 
-  rsvpDeadlineLabel: "19 de julho de 2027",
+  rsvpDeadlineLabel: "19 de junho de 2027",
 
   // Número máximo de acompanhantes por convite.
   maxCompanions: 5,
