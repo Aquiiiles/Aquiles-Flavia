@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Área dos noivos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Great+Vibes&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="admin">
+  <div id="demo-banner" class="demo-banner" hidden>
+    Modo demonstração: a senha é <code>demo</code> e os dados vêm apenas deste navegador.
+  </div>
+
+  <section id="login-view" class="login">
+    <div class="login-card">
+      <p class="hero-kicker">Aquiles &amp; Flavia</p>
+      <h1 class="section-title">Área dos noivos</h1>
+      <p class="muted">Acesso restrito. Digite a senha para ver as confirmações.</p>
+      <form id="login-form">
+        <div class="field">
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+        <p id="login-status" class="form-status" role="status" aria-live="polite"></p>
+      </form>
+      <a class="link" href="index.html">&larr; Voltar ao site</a>
+    </div>
+  </section>
+
+  <section id="dash-view" class="dash" hidden>
+    <header class="dash-header">
+      <div>
+        <p class="hero-kicker">Aquiles &amp; Flavia</p>
+        <h1 class="section-title">Confirmações</h1>
+        <p id="last-update" class="muted"></p>
+      </div>
+      <div class="dash-actions">
+        <button id="refresh-btn" class="btn btn-ghost" type="button">Atualizar</button>
+        <button id="export-btn" class="btn btn-ghost" type="button">Exportar CSV</button>
+        <button id="logout-btn" class="btn btn-ghost" type="button">Sair</button>
+      </div>
+    </header>
+
+    <div class="stats">
+      <div class="stat stat-main"><span id="stat-people">0</span><small>pessoas confirmadas</small></div>
+      <div class="stat"><span id="stat-yes">0</span><small>convites "vou"</small></div>
+      <div class="stat"><span id="stat-no">0</span><small>não vão</small></div>
+      <div class="stat"><span id="stat-total">0</span><small>respostas</small></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-filter="todos" type="button">Todos</button>
+        <button class="tab" data-filter="sim" type="button">Vão</button>
+        <button class="tab" data-filter="nao" type="button">Não vão</button>
+      </div>
+      <input id="search" class="search" type="search" placeholder="Buscar por nome, telefone...">
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Presença</th>
+            <th>Pessoas</th>
+            <th>Acompanhantes</th>
+            <th>Telefone</th>
+            <th>E-mail</th>
+            <th>Restrições</th>
+            <th>Recado</th>
+            <th>Respondido em</th>
+          </tr>
+        </thead>
+        <tbody id="rsvp-rows"></tbody>
+      </table>
+      <p id="empty-state" class="empty" hidden>Nenhuma resposta encontrada.</p>
+    </div>
+  </section>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/admin.js"></script>
+</body>
+</html>
