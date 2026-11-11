@@ -61,10 +61,15 @@
     return true;
   }
 
+  const DOC_PLACEHOLDER = { CPF: "000.000.000-00", RG: "Número do RG", PASSAPORTE: "Número do passaporte" };
+
   function validateDoc(tipo, value) {
     if (tipo === "CPF") return isValidCpf(onlyDigits(value)) ? "" : "CPF inválido.";
-    const rg = value.toUpperCase().replace(/[^0-9A-Z]/g, "");
-    return rg.length >= 5 && rg.length <= 14 && /\d/.test(rg) ? "" : "RG inválido.";
+    // RG e passaporte variam por estado/país: letras e números, com ao menos um número.
+    const doc = value.toUpperCase().replace(/[^0-9A-Z]/g, "");
+    const max = tipo === "PASSAPORTE" ? 20 : 14;
+    const ok = doc.length >= 5 && doc.length <= max && /\d/.test(doc);
+    return ok ? "" : (tipo === "PASSAPORTE" ? "Passaporte" : "RG") + " inválido.";
   }
 
   /** Liga um <select> CPF/RG ao campo do número, com máscara de CPF. */
@@ -79,7 +84,7 @@
       }
     };
     select.addEventListener("change", () => {
-      input.placeholder = select.value === "CPF" ? "000.000.000-00" : "Número do RG";
+      input.placeholder = DOC_PLACEHOLDER[select.value];
       input.inputMode = select.value === "CPF" ? "numeric" : "text";
       apply();
     });
@@ -87,7 +92,13 @@
   }
 
   const phone = $("#rep-telefone");
+  const isInternational = (v) => v.trim().startsWith("+");
   phone.addEventListener("input", () => {
+    // Número de fora: "+" e código do país, sem a máscara brasileira.
+    if (isInternational(phone.value)) {
+      phone.value = "+" + phone.value.replace(/[^\d\s]/g, "").replace(/^\s+/, "").slice(0, 20);
+      return;
+    }
     const d = onlyDigits(phone.value).slice(0, 11);
     let out = d;
     if (d.length > 2) out = "(" + d.slice(0, 2) + ") " + d.slice(2);
@@ -162,7 +173,8 @@
   }
 
   function validateName(nome) {
-    return nome.split(/\s+/).filter(Boolean).length >= 2 ? "" : "Informe nome e sobrenome.";
+    const words = nome.replace(/[^\p{L}\s]/gu, "").split(/\s+/).filter(Boolean);
+    return words.length >= 2 ? "" : "Informe nome e sobrenome.";
   }
 
   function collect() {
@@ -177,7 +189,9 @@
     errors.push(
       validateName(rep.nome) ||
         validateDoc(rep.docTipo, rep.documento) ||
-        (onlyDigits(rep.telefone).length < 10 ? "Informe um telefone com DDD." : "")
+        (onlyDigits(rep.telefone).length < (isInternational(rep.telefone) ? 8 : 10)
+          ? "Informe um telefone com DDD (ou com + e o código do país)."
+          : "")
     );
 
     const membros = $$(".person", members).map((card) => {

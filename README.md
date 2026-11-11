@@ -21,8 +21,11 @@ Noivos ──► admin.html + senha ──────────────�
 
 - **Representante da família**: uma pessoa confirma por todos. Só ela informa
   telefone e e-mail.
-- **Documento (CPF ou RG) de cada pessoa**: é o que impede confirmar a mesma
-  pessoa duas vezes. O CPF é validado pelos dígitos verificadores.
+- **Documento de cada pessoa (CPF, RG ou passaporte)**: é o que impede confirmar
+  a mesma pessoa duas vezes. O CPF é validado pelos dígitos verificadores; RG e
+  passaporte aceitam letras e números, já que o formato muda por estado e país.
+- **Convidados de fora**: usam passaporte e podem informar telefone internacional
+  começando com `+` e o código do país (ex.: `+1 555 123 4567`).
 - **Crianças (até 12 anos)** podem ir sem documento.
 - **Duplicidade**: uma pessoa é recusada se o documento **ou** o nome (ignorando
   acentos e maiúsculas) já estiver confirmado. O site mostra qual pessoa foi

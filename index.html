@@ -85,7 +85,7 @@
           <p class="form-intro">
             Uma pessoa da família confirma por todos. Ela é o <strong>representante</strong>
             e só ela precisa informar telefone. Pedimos um documento de cada convidado
-            para evitar confirmações em duplicidade.
+            (CPF, RG ou, para quem é de fora, passaporte) para evitar confirmações em duplicidade.
           </p>
 
           <fieldset class="person person-rep">
@@ -100,6 +100,7 @@
                 <select id="rep-doc-tipo" aria-label="Tipo de documento">
                   <option value="CPF">CPF</option>
                   <option value="RG">RG</option>
+                <option value="PASSAPORTE">Passaporte</option>
                 </select>
                 <input id="rep-doc" type="text" required inputmode="numeric" maxlength="20" placeholder="000.000.000-00" autocomplete="off">
               </div>
@@ -107,7 +108,7 @@
             <div class="field-row">
               <div class="field">
                 <label for="rep-telefone">Telefone / WhatsApp *</label>
-                <input id="rep-telefone" type="tel" required placeholder="(21) 99999-9999" autocomplete="tel" inputmode="tel">
+                <input id="rep-telefone" type="tel" required placeholder="(21) 99999-9999 ou +1 555 123 4567" autocomplete="tel" inputmode="tel">
               </div>
               <div class="field">
                 <label for="rep-email">E-mail</label>
@@ -169,6 +170,7 @@
               <select id="lookup-doc-tipo" aria-label="Tipo de documento">
                 <option value="CPF">CPF</option>
                 <option value="RG">RG</option>
+                <option value="PASSAPORTE">Passaporte</option>
               </select>
               <input id="lookup-doc" type="text" required inputmode="numeric" maxlength="20" placeholder="000.000.000-00" autocomplete="off">
             </div>
@@ -205,6 +207,7 @@
               <select class="m-doc-tipo" aria-label="Tipo de documento">
                 <option value="CPF">CPF</option>
                 <option value="RG">RG</option>
+                <option value="PASSAPORTE">Passaporte</option>
               </select>
               <input class="m-doc" type="text" inputmode="numeric" maxlength="20" placeholder="000.000.000-00" autocomplete="off">
             </div>

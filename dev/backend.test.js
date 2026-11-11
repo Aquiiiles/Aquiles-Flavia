@@ -105,7 +105,7 @@ test("valida CPF, nome completo, telefone e repetição no mesmo envio", () => {
   assert.match(res.error, /telefone/);
 
   res = bad(family({ membros: [{ nome: "Adulto Sem Doc" }] }));
-  assert.match(res.error, /informe o CPF/);
+  assert.match(res.error, /informe o documento/);
 
   res = bad(family({ membros: [{ nome: "Maria Silva", docTipo: "RG", documento: "998877665" }] }));
   assert.match(res.error, /mais de uma vez/);
@@ -205,4 +205,64 @@ test("status editado à mão na planilha é respeitado", () => {
     },
   });
   assert.equal(res.ok, true, res.error);
+});
+
+test("convidado de fora confirma com passaporte e telefone internacional", () => {
+  const b = createBackend();
+  const res = b.post({
+    action: "rsvp",
+    data: {
+      representante: {
+        nome: "John Smith",
+        docTipo: "PASSAPORTE",
+        documento: "X1234567",
+        telefone: "+1 555 123 4567",
+      },
+      membros: [{ nome: "Søren Ødegård", docTipo: "PASSAPORTE", documento: "fp-998877" }],
+    },
+  });
+  assert.equal(res.ok, true, res.error);
+  const [john, soren] = b.post({ action: "list", password: "senha-teste" }).pessoas;
+  assert.equal(john.docTipo, "PASSAPORTE");
+  assert.equal(john.documento, "X1234567");
+  assert.equal(john.telefone, "+1 555 123 4567");
+  assert.equal(soren.documento, "FP998877");
+
+  // Mesmo passaporte com outra pontuação e minúsculas é duplicidade.
+  const dup = b.post({
+    action: "rsvp",
+    data: {
+      representante: { nome: "Outra Pessoa", docTipo: "PASSAPORTE", documento: "x-123.4567", telefone: "+44 20 7946 0958" },
+      membros: [],
+    },
+  });
+  assert.equal(dup.ok, false);
+  assert.equal(dup.duplicates[0].motivo, "documento");
+
+  // Consulta e cancelamento pelo passaporte.
+  const look = b.post({ action: "lookup", data: { docTipo: "PASSAPORTE", documento: "X1234567" } });
+  assert.equal(look.pessoas.length, 2);
+});
+
+test("passaporte e telefone internacional inválidos são recusados", () => {
+  const b = createBackend();
+  const rep = (over) => ({
+    representante: { nome: "John Smith", docTipo: "PASSAPORTE", documento: "X1234567", telefone: "+1 555 123 4567", ...over },
+    membros: [],
+  });
+  assert.match(b.post({ action: "rsvp", data: rep({ documento: "ABC" }) }).error, /Passaporte inválido/);
+  assert.match(b.post({ action: "rsvp", data: rep({ telefone: "+1 555" }) }).error, /telefone/);
+  assert.match(b.post({ action: "rsvp", data: rep({ telefone: "5551234567890123" }) }).error, /telefone/);
+});
+
+test("nomes em outros alfabetos funcionam e só números não é nome", () => {
+  const b = createBackend();
+  const rep = (nome, documento) => ({
+    representante: { nome, docTipo: "PASSAPORTE", documento, telefone: "+81 90 1234 5678" },
+    membros: [],
+  });
+  assert.equal(b.post({ action: "rsvp", data: rep("山田 太郎", "TK1234567") }).ok, true);
+  const dup = b.post({ action: "rsvp", data: rep("山田  太郎", "TK7654321") });
+  assert.equal(dup.duplicates[0].motivo, "nome");
+  assert.match(b.post({ action: "rsvp", data: rep("123 456", "TK0000001") }).error, /nome e sobrenome/);
 });
