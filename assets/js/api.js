@@ -30,5 +30,7 @@ window.Api = (() => {
     lookup: (docTipo, documento) => call({ action: "lookup", data: { docTipo, documento } }),
     cancel: (docTipo, documento, ids) => call({ action: "cancel", data: { docTipo, documento, ids } }),
     listAll: (password) => call({ action: "list", password }),
+    adminAdd: (password, data) => call({ action: "adminAdd", password, data }),
+    adminDelete: (password, ids) => call({ action: "adminDelete", password, ids }),
   };
 })();

@@ -617,6 +617,45 @@ textarea { resize: vertical; }
 .table td.muted { white-space: nowrap; }
 .table td { white-space: pre-wrap; }
 
+.row-delete {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.row-delete:hover { color: #fff; background: var(--danger); border-color: var(--danger); }
+.row-delete:disabled { opacity: 0.5; cursor: wait; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.admin-add {
+  margin-bottom: 24px;
+  padding: 24px;
+  background: var(--paper);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.admin-add .result-title { margin-bottom: 16px; }
+.admin-add-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  column-gap: 18px;
+}
+.admin-add .check { margin: 0 0 16px; }
+.admin-add-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.admin-add-actions .btn-link { margin: 0; width: auto; }
+
 .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; }
 .badge-yes { background: rgba(127, 143, 98, 0.18); color: var(--ok); }
 .badge-no { background: rgba(168, 84, 59, 0.12); color: var(--danger); }

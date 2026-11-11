@@ -36,11 +36,58 @@
         <p id="last-update" class="muted"></p>
       </div>
       <div class="dash-actions">
+        <button id="add-toggle" class="btn btn-primary" type="button">+ Adicionar pessoa</button>
         <button id="refresh-btn" class="btn btn-ghost" type="button">Atualizar</button>
         <button id="export-btn" class="btn btn-ghost" type="button">Exportar CSV</button>
         <button id="logout-btn" class="btn btn-ghost" type="button">Sair</button>
       </div>
     </header>
+
+    <form id="add-form" class="admin-add" hidden novalidate>
+      <h2 class="result-title">Adicionar pessoa</h2>
+      <div class="admin-add-grid">
+        <div class="field">
+          <label for="add-nome">Nome completo *</label>
+          <input id="add-nome" type="text" required maxlength="100" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="add-familia">Família</label>
+          <select id="add-familia"></select>
+        </div>
+        <div class="field">
+          <label for="add-doc">Documento (opcional)</label>
+          <div class="doc-input">
+            <select id="add-doc-tipo" aria-label="Tipo de documento">
+              <option value="CPF">CPF</option>
+              <option value="RG">RG</option>
+              <option value="PASSAPORTE">Passaporte</option>
+            </select>
+            <input id="add-doc" type="text" maxlength="20" autocomplete="off">
+          </div>
+        </div>
+        <div class="field">
+          <label for="add-restricoes">Restrição alimentar</label>
+          <input id="add-restricoes" type="text" maxlength="300">
+        </div>
+        <div class="field new-family-only">
+          <label for="add-telefone">Telefone (opcional)</label>
+          <input id="add-telefone" type="tel" maxlength="30">
+        </div>
+        <div class="field new-family-only">
+          <label for="add-email">E-mail (opcional)</label>
+          <input id="add-email" type="email" maxlength="120">
+        </div>
+      </div>
+      <label class="check">
+        <input id="add-crianca" type="checkbox">
+        <span>É criança (até 12 anos)</span>
+      </label>
+      <div class="admin-add-actions">
+        <button id="add-cancel" type="button" class="btn btn-link">Fechar</button>
+        <button id="add-submit" type="submit" class="btn btn-primary">Adicionar</button>
+      </div>
+      <p id="add-status" class="form-status" role="status" aria-live="polite"></p>
+    </form>
 
     <div class="stats">
       <div class="stat stat-main"><span id="stat-people">0</span><small>pessoas confirmadas</small></div>
@@ -63,6 +110,7 @@
       <table class="table">
         <thead>
           <tr>
+            <th><span class="sr-only">Ações</span></th>
             <th>Nome</th>
             <th>Status</th>
             <th>Tipo</th>
@@ -81,8 +129,9 @@
       <p id="empty-state" class="empty" hidden>Nenhuma pessoa encontrada.</p>
     </div>
     <p class="muted small admin-note">
-      Para corrigir algo à mão, edite a planilha: mudar a coluna "Status" para
-      "Cancelado" libera aquela pessoa para confirmar de novo.
+      Use "+ Adicionar pessoa" para incluir alguém e o &times; ao lado do nome para apagar.
+      Também dá para editar direto na aba "Confirmacoes" da planilha: mudar a coluna
+      "Status" para "Cancelado" libera aquela pessoa para confirmar de novo.
     </p>
   </section>
 

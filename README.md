@@ -66,9 +66,21 @@ Deixar `key` vazio esconde a seção.
 O gerador de QR Code (`assets/vendor/qrcode-generator-1.4.4.js`, licença MIT)
 fica dentro do site, sem depender de CDN.
 
+### Área dos noivos
+
+Além da lista, totais e exportação em CSV, os noivos podem:
+
+- **Adicionar pessoa** ("+ Adicionar pessoa"): numa família que já confirmou ou
+  como representante de uma família nova. Documento, telefone e e-mail são
+  opcionais aqui; a checagem de duplicidade continua valendo.
+- **Apagar pessoa** (× ao lado do nome): remove a linha da planilha de vez.
+
+Toda ação passa pela senha (`ADMIN_PASSWORD`) no servidor.
+
 ### A planilha
 
-Cada linha é **uma pessoa**. Colunas: ID, Código da família, Data/Hora, Status,
+Os dados ficam na aba **`Confirmacoes`** (criada pelo `setup`), não na primeira
+aba da planilha. Cada linha é **uma pessoa**. Colunas: ID, Código da família, Data/Hora, Status,
 Nome, Tipo (Representante/Acompanhante), Criança, Tipo de documento, Documento,
 Representante, Telefone, E-mail, Restrições alimentares, Mensagem, Cancelado em.
 

@@ -63,6 +63,10 @@ function doPost(e) {
         return json(cancel(body.data || {}));
       case 'list':
         return json(listAll(body.password));
+      case 'adminAdd':
+        return json(adminAdd(body.password, body.data || {}));
+      case 'adminDelete':
+        return json(adminDelete(body.password, body.ids));
       default:
         return json({ ok: false, error: 'Ação inválida.' });
     }
@@ -83,27 +87,7 @@ function saveRsvp(input) {
   return withLock(() => {
     const sheet = getSheet();
     const active = readRows(sheet).filter((r) => r.status === STATUS_CONFIRMED);
-
-    const byDoc = {};
-    const byName = {};
-    active.forEach((r) => {
-      const key = docKey(r.docTipo, r.documento);
-      if (key) byDoc[key] = r;
-      byName[nameKey(r.nome)] = r;
-    });
-
-    const duplicates = [];
-    people.forEach((p, index) => {
-      const found = (p.docKey && byDoc[p.docKey]) || byName[p.nameKey];
-      if (found) {
-        duplicates.push({
-          index: index,
-          nome: p.nome,
-          motivo: p.docKey && byDoc[p.docKey] ? 'documento' : 'nome',
-          confirmadoPor: maskName(found.representante),
-        });
-      }
-    });
+    const duplicates = findDuplicates(people, active);
     if (duplicates.length) {
       return {
         ok: false,
@@ -137,11 +121,39 @@ function saveRsvp(input) {
       };
     });
 
-    const values = rows.map((r) => COLUMNS.map(([key]) => toCell(key, r[key])));
-    sheet.getRange(sheet.getLastRow() + 1, 1, values.length, COLUMNS.length).setValues(values);
-
+    appendRows(sheet, rows);
     return { ok: true, familia: familia, pessoas: people.map((p) => p.nome) };
   });
+}
+
+/** Pessoas do envio que já estão confirmadas (pelo documento ou pelo nome). */
+function findDuplicates(people, activeRows) {
+  const byDoc = {};
+  const byName = {};
+  activeRows.forEach((r) => {
+    const key = docKey(r.docTipo, r.documento);
+    if (key) byDoc[key] = r;
+    byName[nameKey(r.nome)] = r;
+  });
+
+  const duplicates = [];
+  people.forEach((p, index) => {
+    const found = (p.docKey && byDoc[p.docKey]) || byName[p.nameKey];
+    if (found) {
+      duplicates.push({
+        index: index,
+        nome: p.nome,
+        motivo: p.docKey && byDoc[p.docKey] ? 'documento' : 'nome',
+        confirmadoPor: maskName(found.representante),
+      });
+    }
+  });
+  return duplicates;
+}
+
+function appendRows(sheet, rows) {
+  const values = rows.map((r) => COLUMNS.map(([key]) => toCell(key, r[key])));
+  sheet.getRange(sheet.getLastRow() + 1, 1, values.length, COLUMNS.length).setValues(values);
 }
 
 function validateRsvp(input) {
@@ -152,21 +164,8 @@ function validateRsvp(input) {
   }
 
   const representante = validatePerson(rep, 'Representante', false);
-  const telefone = str(rep.telefone, 30);
-  const phoneDigits = digits(telefone);
-  // Telefone de fora começa com "+" e o código do país (formato internacional).
-  const international = telefone.charAt(0) === '+';
-  const [minDigits, maxDigits] = international ? [8, 15] : [10, 13];
-  if (phoneDigits.length < minDigits || phoneDigits.length > maxDigits) {
-    throw userError('Informe um telefone válido com DDD (ou com + e o código do país).');
-  }
-  representante.telefone = telefone;
-
-  const email = str(rep.email, 120);
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw userError('E-mail inválido.');
-  }
-  representante.email = email;
+  representante.telefone = validatePhone(rep.telefone);
+  representante.email = validateEmail(rep.email);
 
   const people = [representante].concat(
     membros.map((m, i) => validatePerson(m, 'Acompanhante ' + (i + 1), true))
@@ -194,7 +193,32 @@ function validateRsvp(input) {
   };
 }
 
-function validatePerson(p, label, allowChild) {
+function validatePhone(value) {
+  const telefone = str(value, 30);
+  const phoneDigits = digits(telefone);
+  // Telefone de fora começa com "+" e o código do país (formato internacional).
+  const international = telefone.charAt(0) === '+';
+  const [minDigits, maxDigits] = international ? [8, 15] : [10, 13];
+  if (phoneDigits.length < minDigits || phoneDigits.length > maxDigits) {
+    throw userError('Informe um telefone válido com DDD (ou com + e o código do país).');
+  }
+  return telefone;
+}
+
+function validateEmail(value) {
+  const email = str(value, 120);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw userError('E-mail inválido.');
+  }
+  return email;
+}
+
+/**
+ * Valida uma pessoa. `allowChild`: pode ser marcada como criança (e aí vir
+ * sem documento). `docOptional`: documento opcional para qualquer um (usado
+ * quando os noivos adicionam alguém pela área deles).
+ */
+function validatePerson(p, label, allowChild, docOptional) {
   const nome = str(p.nome, 100).replace(/\s+/g, ' ');
   if (nameKey(nome).split(' ').filter(Boolean).length < 2) {
     throw userError(label + ': informe nome e sobrenome.');
@@ -204,9 +228,9 @@ function validatePerson(p, label, allowChild) {
   const docTipo = parseDocType(p.docTipo);
   const rawDoc = str(p.documento, 30);
 
-  // Criança pode vir sem documento; nesse caso a checagem é só pelo nome.
-  if (!rawDoc && crianca) {
-    return { nome: nome, crianca: true, docTipo: '', documento: '', docKey: '', nameKey: nameKey(nome) };
+  // Sem documento, a checagem de duplicidade é só pelo nome.
+  if (!rawDoc && (crianca || docOptional)) {
+    return { nome: nome, crianca: crianca, docTipo: '', documento: '', docKey: '', nameKey: nameKey(nome) };
   }
   if (!rawDoc) throw userError(label + ': informe o documento.');
 
@@ -314,6 +338,82 @@ function listAll(password) {
     return out;
   });
   return { ok: true, pessoas: rows };
+}
+
+/**
+ * Os noivos adicionam uma pessoa: numa família existente (`familia` com o
+ * código) ou como representante de uma família nova. Documento é opcional.
+ */
+function adminAdd(password, input) {
+  checkPassword(password);
+  const person = validatePerson(input, 'Pessoa', true, true);
+  const familyCode = str(input.familia, 20).toUpperCase();
+
+  return withLock(() => {
+    const sheet = getSheet();
+    const rows = readRows(sheet);
+    const active = rows.filter((r) => r.status === STATUS_CONFIRMED);
+    const dup = findDuplicates([person], active)[0];
+    if (dup) {
+      throw userError(person.nome + ' já está confirmado(a)' +
+        (dup.motivo === 'documento' ? ' com esse documento.' : '.'));
+    }
+
+    const row = {
+      id: Utilities.getUuid(),
+      timestamp: new Date(),
+      status: STATUS_CONFIRMED,
+      nome: person.nome,
+      crianca: person.crianca ? 'Sim' : 'Não',
+      docTipo: person.docTipo,
+      documento: person.documento,
+      telefone: '',
+      email: '',
+      restricoes: str(input.restricoes, 300),
+      mensagem: '(adicionado pelos noivos)',
+      canceladoEm: '',
+    };
+
+    if (familyCode) {
+      const members = rows.filter((r) => String(r.familia).toUpperCase() === familyCode);
+      if (!members.length) throw userError('Família ' + familyCode + ' não encontrada.');
+      const rep = members.filter((r) => r.papel === ROLE_REP)[0] || members[0];
+      row.familia = rep.familia;
+      row.papel = ROLE_MEMBER;
+      row.representante = rep.nome;
+    } else {
+      row.familia = newFamilyCode(sheet);
+      row.papel = ROLE_REP;
+      row.representante = person.nome;
+      row.telefone = str(input.telefone, 30) ? validatePhone(input.telefone) : '';
+      row.email = validateEmail(input.email);
+    }
+
+    appendRows(sheet, [row]);
+    return { ok: true, familia: row.familia, id: row.id };
+  });
+}
+
+/** Os noivos apagam pessoas da planilha (a linha some de vez). */
+function adminDelete(password, ids) {
+  checkPassword(password);
+  const wanted = Array.isArray(ids) ? ids.map(String) : [];
+  if (!wanted.length) throw userError('Nenhuma pessoa selecionada.');
+
+  return withLock(() => {
+    const sheet = getSheet();
+    const byId = {};
+    readRows(sheet).forEach((r) => (byId[r.id] = r));
+    if (wanted.some((id) => !byId[id])) {
+      throw userError('Alguém já foi alterado na planilha. Clique em Atualizar e tente de novo.');
+    }
+    // Apaga de baixo para cima para os números das linhas não mudarem.
+    wanted
+      .map((id) => byId[id]._row)
+      .sort((a, b) => b - a)
+      .forEach((row) => sheet.deleteRow(row));
+    return { ok: true, apagados: wanted.length };
+  });
 }
 
 function checkPassword(password) {

@@ -31,6 +31,7 @@
     dashView.hidden = false;
     $("#last-update").textContent = "Atualizado às " + new Date().toLocaleTimeString("pt-BR");
     render();
+    if (!addForm.hidden) fillFamilies();
   }
 
   loginForm.addEventListener("submit", async (ev) => {
@@ -134,6 +135,7 @@
         const confirmed = p.status === "Confirmado";
         const tipo = p.papel === "Representante" ? "Representante" : p.crianca === "Sim" ? "Criança" : "Acompanhante";
         tr.append(
+          deleteCell(p),
           cell(p.nome, "strong"),
           badge(confirmed ? "Confirmado" : "Cancelado", confirmed ? "yes" : "no"),
           cell(tipo),
@@ -151,6 +153,136 @@
     );
     $("#empty-state").hidden = visible.length > 0;
   }
+
+  // ---------------------------------------------------------------------------
+  // Apagar
+  // ---------------------------------------------------------------------------
+
+  const password = () => sessionStorage.getItem(SESSION_KEY);
+
+  function deleteCell(p) {
+    const td = document.createElement("td");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "row-delete";
+    btn.textContent = "×";
+    btn.title = "Apagar " + p.nome;
+    btn.setAttribute("aria-label", "Apagar " + p.nome);
+    btn.addEventListener("click", () => removePerson(p, btn));
+    td.appendChild(btn);
+    return td;
+  }
+
+  async function removePerson(p, btn) {
+    let msg = "Apagar " + p.nome + " da lista?\n\nA linha sai da planilha e não dá para desfazer.";
+    const others = pessoas.filter((o) => o.familia === p.familia && o.id !== p.id && o.status === "Confirmado");
+    if (p.papel === "Representante" && others.length) {
+      msg +=
+        "\n\nAtenção: " + p.nome + " é o(a) representante. As outras " + others.length +
+        " pessoa(s) da família continuam na lista, mas não poderão mais ser canceladas pelo documento dele(a).";
+    }
+    if (!window.confirm(msg)) return;
+    btn.disabled = true;
+    try {
+      await window.Api.adminDelete(password(), [p.id]);
+      await load(password());
+    } catch (err) {
+      btn.disabled = false;
+      alert("Não foi possível apagar: " + err.message);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Adicionar
+  // ---------------------------------------------------------------------------
+
+  const addForm = $("#add-form");
+  const addStatus = $("#add-status");
+  const familySelect = $("#add-familia");
+
+  function fillFamilies() {
+    const reps = {};
+    pessoas
+      .filter((p) => p.status === "Confirmado")
+      .forEach((p) => {
+        const f = (reps[p.familia] = reps[p.familia] || { count: 0, nome: p.representante });
+        f.count++;
+        if (p.papel === "Representante") f.nome = p.nome;
+      });
+    const current = familySelect.value;
+    const opt = (value, text) => {
+      const o = document.createElement("option");
+      o.value = value;
+      o.textContent = text;
+      return o;
+    };
+    familySelect.replaceChildren(
+      opt("", "Nova família (a pessoa será a representante)"),
+      ...Object.keys(reps)
+        .sort((a, b) => String(reps[a].nome).localeCompare(String(reps[b].nome)))
+        .map((code) => opt(code, "Família de " + reps[code].nome + " · " + reps[code].count + " pessoa(s) · " + code))
+    );
+    if (current && reps[current]) familySelect.value = current;
+    updateFamilyFields();
+  }
+
+  function updateFamilyFields() {
+    $$(".new-family-only").forEach((el) => (el.hidden = Boolean(familySelect.value)));
+  }
+
+  familySelect.addEventListener("change", updateFamilyFields);
+
+  $("#add-toggle").addEventListener("click", () => {
+    addForm.hidden = !addForm.hidden;
+    if (!addForm.hidden) {
+      fillFamilies();
+      $("#add-nome").focus();
+    }
+  });
+
+  $("#add-cancel").addEventListener("click", () => {
+    addForm.hidden = true;
+  });
+
+  addForm.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const nome = $("#add-nome").value.trim();
+    if (nome.split(/\s+/).filter(Boolean).length < 2) {
+      addStatus.textContent = "Informe nome e sobrenome.";
+      addStatus.className = "form-status error";
+      return;
+    }
+    const btn = $("#add-submit");
+    btn.disabled = true;
+    addStatus.textContent = "Adicionando...";
+    addStatus.className = "form-status";
+    try {
+      const newFamily = !familySelect.value;
+      await window.Api.adminAdd(password(), {
+        nome,
+        familia: familySelect.value,
+        crianca: $("#add-crianca").checked,
+        docTipo: $("#add-doc-tipo").value,
+        documento: $("#add-doc").value.trim(),
+        restricoes: $("#add-restricoes").value.trim(),
+        telefone: newFamily ? $("#add-telefone").value.trim() : "",
+        email: newFamily ? $("#add-email").value.trim() : "",
+      });
+      const keepFamily = familySelect.value;
+      addForm.reset();
+      await load(password());
+      familySelect.value = keepFamily; // facilita adicionar várias pessoas da mesma família
+      updateFamilyFields();
+      addStatus.textContent = nome + " adicionado(a).";
+      addStatus.className = "form-status ok";
+      $("#add-nome").focus();
+    } catch (err) {
+      addStatus.textContent = err.message;
+      addStatus.className = "form-status error";
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   $("#export-btn").addEventListener("click", () => {
     const cols = [
