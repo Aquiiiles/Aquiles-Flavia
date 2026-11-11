@@ -1,33 +1,50 @@
 /**
  * Backend das confirmações do casamento de Aquiles & Flavia.
  *
- * Roda como Web App do Google Apps Script vinculado a uma Google Planilha.
- * As respostas ficam na aba "Confirmacoes" da planilha, que só os noivos acessam.
+ * Roda como Web App do Google Apps Script e grava na aba "Confirmacoes"
+ * da planilha dos noivos. Cada linha da planilha é UMA pessoa; as pessoas
+ * confirmadas juntas formam uma "família", identificada por um código e
+ * por um representante (o único que informa telefone e e-mail).
  *
  * Configuração obrigatória (Configurações do projeto > Propriedades do script):
  *   ADMIN_PASSWORD = senha da área dos noivos
  */
 
+const SPREADSHEET_ID = '1fVYoJ4d4Fl34pNqHc_ZIXi7rUrBBOohtZAfe1-Uy65U';
 const SHEET_NAME = 'Confirmacoes';
-const MAX_COMPANIONS = 5;
 
-// Ordem das colunas na planilha.
+// Máximo de acompanhantes por família (mantenha igual ao config.js do site).
+const MAX_COMPANIONS = 10;
+
+const STATUS_CONFIRMED = 'Confirmado';
+const STATUS_CANCELLED = 'Cancelado';
+const ROLE_REP = 'Representante';
+const ROLE_MEMBER = 'Acompanhante';
+
+// Ordem das colunas na planilha: [chave interna, cabeçalho].
 const COLUMNS = [
+  ['id', 'ID'],
+  ['familia', 'Código da família'],
   ['timestamp', 'Data/Hora'],
+  ['status', 'Status'],
   ['nome', 'Nome'],
+  ['papel', 'Tipo'],
+  ['crianca', 'Criança'],
+  ['docTipo', 'Tipo de documento'],
+  ['documento', 'Documento'],
+  ['representante', 'Representante'],
   ['telefone', 'Telefone'],
   ['email', 'E-mail'],
-  ['presenca', 'Presença'],
-  ['acompanhantes', 'Acompanhantes'],
-  ['totalPessoas', 'Total de pessoas'],
-  ['nomesAcompanhantes', 'Nomes dos acompanhantes'],
   ['restricoes', 'Restrições alimentares'],
   ['mensagem', 'Mensagem'],
+  ['canceladoEm', 'Cancelado em'],
 ];
 
-// Proteção contra tentativa de senha por força bruta.
+// Proteção contra força bruta na senha e varredura de documentos.
 const MAX_FAILED_LOGINS = 10;
 const LOCKOUT_SECONDS = 15 * 60;
+const MAX_LOOKUPS = 200;
+const LOOKUP_WINDOW_SECONDS = 10 * 60;
 
 function doGet() {
   return json({ ok: true, service: 'rsvp-aquiles-flavia' });
@@ -39,122 +56,260 @@ function doPost(e) {
     switch (body.action) {
       case 'rsvp':
         return json(saveRsvp(body.data || {}));
+      case 'lookup':
+        return json(lookup(body.data || {}));
+      case 'cancel':
+        return json(cancel(body.data || {}));
       case 'list':
-        return json(listRsvps(body.password));
+        return json(listAll(body.password));
       default:
         return json({ ok: false, error: 'Ação inválida.' });
     }
   } catch (err) {
-    console.error(err);
-    return json({ ok: false, error: err.userMessage || 'Erro no servidor.' });
+    if (!err.userMessage) console.error(err);
+    return json({ ok: false, error: err.userMessage || 'Erro no servidor. Tente novamente.' });
   }
 }
 
 // ---------------------------------------------------------------------------
-// Confirmação
+// Confirmação de presença
 // ---------------------------------------------------------------------------
 
 function saveRsvp(input) {
-  const rsvp = validate(input);
+  const rsvp = validateRsvp(input);
+  const people = [rsvp.representante].concat(rsvp.membros);
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
-  try {
+  return withLock(() => {
     const sheet = getSheet();
-    const phoneCol = columnIndex('telefone');
-    const lastRow = sheet.getLastRow();
+    const active = readRows(sheet).filter((r) => r.status === STATUS_CONFIRMED);
 
-    // Mesmo telefone = mesma pessoa: atualiza em vez de duplicar.
-    let targetRow = -1;
-    if (lastRow > 1) {
-      const phones = sheet.getRange(2, phoneCol + 1, lastRow - 1, 1).getValues();
-      const needle = digits(rsvp.telefone);
-      for (let i = 0; i < phones.length; i++) {
-        if (digits(phones[i][0]) === needle) {
-          targetRow = i + 2;
-          break;
-        }
+    const byDoc = {};
+    const byName = {};
+    active.forEach((r) => {
+      const key = docKey(r.docTipo, r.documento);
+      if (key) byDoc[key] = r;
+      byName[nameKey(r.nome)] = r;
+    });
+
+    const duplicates = [];
+    people.forEach((p, index) => {
+      const found = (p.docKey && byDoc[p.docKey]) || byName[p.nameKey];
+      if (found) {
+        duplicates.push({
+          index: index,
+          nome: p.nome,
+          motivo: p.docKey && byDoc[p.docKey] ? 'documento' : 'nome',
+          confirmadoPor: maskName(found.representante),
+        });
       }
+    });
+    if (duplicates.length) {
+      return {
+        ok: false,
+        error: duplicates.length === 1
+          ? duplicates[0].nome + ' já está com presença confirmada.'
+          : 'Algumas pessoas já estão com presença confirmada.',
+        duplicates: duplicates,
+      };
     }
 
-    const row = COLUMNS.map(([key]) => toCell(key, rsvp[key]));
-    if (targetRow > 0) {
-      sheet.getRange(targetRow, 1, 1, row.length).setValues([row]);
-    } else {
-      sheet.appendRow(row);
-    }
-    return { ok: true, updated: targetRow > 0 };
-  } finally {
-    lock.releaseLock();
-  }
+    const familia = newFamilyCode(sheet);
+    const now = new Date();
+    const rows = people.map((p, index) => {
+      const isRep = index === 0;
+      return {
+        id: Utilities.getUuid(),
+        familia: familia,
+        timestamp: now,
+        status: STATUS_CONFIRMED,
+        nome: p.nome,
+        papel: isRep ? ROLE_REP : ROLE_MEMBER,
+        crianca: p.crianca ? 'Sim' : 'Não',
+        docTipo: p.docTipo,
+        documento: p.documento,
+        representante: rsvp.representante.nome,
+        telefone: isRep ? rsvp.representante.telefone : '',
+        email: isRep ? rsvp.representante.email : '',
+        restricoes: isRep ? rsvp.restricoes : '',
+        mensagem: isRep ? rsvp.mensagem : '',
+        canceladoEm: '',
+      };
+    });
+
+    const values = rows.map((r) => COLUMNS.map(([key]) => toCell(key, r[key])));
+    sheet.getRange(sheet.getLastRow() + 1, 1, values.length, COLUMNS.length).setValues(values);
+
+    return { ok: true, familia: familia, pessoas: people.map((p) => p.nome) };
+  });
 }
 
-function validate(input) {
-  const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
+function validateRsvp(input) {
+  const rep = input.representante || {};
+  const membros = Array.isArray(input.membros) ? input.membros : [];
+  if (membros.length > MAX_COMPANIONS) {
+    throw userError('Máximo de ' + MAX_COMPANIONS + ' acompanhantes por confirmação.');
+  }
 
-  const nome = str(input.nome, 100);
-  if (nome.length < 2) throw userError('Informe seu nome.');
-
-  const telefone = str(input.telefone, 30);
+  const representante = validatePerson(rep, 'Representante', false);
+  const telefone = str(rep.telefone, 30);
   const phoneDigits = digits(telefone);
   if (phoneDigits.length < 10 || phoneDigits.length > 13) {
     throw userError('Informe um telefone válido com DDD.');
   }
+  representante.telefone = telefone;
 
-  const presenca = input.presenca === 'sim' ? 'sim' : input.presenca === 'nao' ? 'nao' : '';
-  if (!presenca) throw userError('Informe se vai comparecer.');
-
-  let acompanhantes = 0;
-  if (presenca === 'sim') {
-    acompanhantes = Math.floor(Number(input.acompanhantes) || 0);
-    acompanhantes = Math.max(0, Math.min(MAX_COMPANIONS, acompanhantes));
-  }
-
-  const email = str(input.email, 120);
+  const email = str(rep.email, 120);
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw userError('E-mail inválido.');
   }
+  representante.email = email;
+
+  const people = [representante].concat(
+    membros.map((m, i) => validatePerson(m, 'Acompanhante ' + (i + 1), true))
+  );
+
+  // A mesma pessoa não pode aparecer duas vezes no mesmo envio.
+  const seenDocs = {};
+  const seenNames = {};
+  people.forEach((p) => {
+    if (p.docKey && seenDocs[p.docKey]) {
+      throw userError('O documento de ' + p.nome + ' foi informado mais de uma vez.');
+    }
+    if (seenNames[p.nameKey]) {
+      throw userError(p.nome + ' foi informado(a) mais de uma vez.');
+    }
+    if (p.docKey) seenDocs[p.docKey] = true;
+    seenNames[p.nameKey] = true;
+  });
 
   return {
-    timestamp: new Date(),
-    nome: nome,
-    telefone: telefone,
-    email: email,
-    presenca: presenca,
-    acompanhantes: acompanhantes,
-    totalPessoas: presenca === 'sim' ? 1 + acompanhantes : 0,
-    nomesAcompanhantes: acompanhantes > 0 ? str(input.nomesAcompanhantes, 500) : '',
-    restricoes: presenca === 'sim' ? str(input.restricoes, 300) : '',
+    representante: representante,
+    membros: people.slice(1),
+    restricoes: str(input.restricoes, 300),
     mensagem: str(input.mensagem, 1000),
   };
+}
+
+function validatePerson(p, label, allowChild) {
+  const nome = str(p.nome, 100).replace(/\s+/g, ' ');
+  if (nome.split(' ').filter(Boolean).length < 2) {
+    throw userError(label + ': informe nome e sobrenome.');
+  }
+
+  const crianca = allowChild && p.crianca === true;
+  const docTipo = p.docTipo === 'RG' ? 'RG' : 'CPF';
+  const rawDoc = str(p.documento, 30);
+
+  // Criança pode vir sem documento; nesse caso a checagem é só pelo nome.
+  if (!rawDoc && crianca) {
+    return { nome: nome, crianca: true, docTipo: '', documento: '', docKey: '', nameKey: nameKey(nome) };
+  }
+  if (!rawDoc) throw userError(label + ': informe o ' + docTipo + '.');
+
+  const documento = formatDocument(docTipo, rawDoc);
+  if (!documento) throw userError(label + ': ' + docTipo + ' inválido.');
+
+  return {
+    nome: nome,
+    crianca: crianca,
+    docTipo: docTipo,
+    documento: documento,
+    docKey: docKey(docTipo, documento),
+    nameKey: nameKey(nome),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Consulta e cancelamento
+// ---------------------------------------------------------------------------
+
+/**
+ * Encontra o que o dono do documento pode cancelar:
+ * - representante: todas as pessoas ativas da(s) família(s) dele;
+ * - acompanhante: só ele mesmo.
+ */
+function findManageable(rows, docTipo, documento) {
+  const key = docKey(docTipo, documento);
+  if (!key) throw userError('Documento inválido.');
+
+  const own = rows.filter((r) => docKey(r.docTipo, r.documento) === key);
+  const families = {};
+  const ids = {};
+  own.forEach((r) => {
+    if (r.papel === ROLE_REP) families[r.familia] = true;
+    if (r.status === STATUS_CONFIRMED) ids[r.id] = true;
+  });
+  const manageable = rows.filter(
+    (r) => r.status === STATUS_CONFIRMED && (ids[r.id] || families[r.familia])
+  );
+  return { own: own, manageable: manageable, ownIds: ids };
+}
+
+function lookup(input) {
+  throttleLookups();
+  const docTipo = input.docTipo === 'RG' ? 'RG' : 'CPF';
+  const rows = readRows(getSheet());
+  const result = findManageable(rows, docTipo, str(input.documento, 30));
+
+  if (!result.own.length) return { ok: true, found: false };
+
+  return {
+    ok: true,
+    found: true,
+    pessoas: result.manageable.map((r) => ({
+      id: r.id,
+      nome: maskName(r.nome),
+      papel: r.papel,
+      voce: !!result.ownIds[r.id],
+      familia: r.familia,
+    })),
+  };
+}
+
+function cancel(input) {
+  throttleLookups();
+  const docTipo = input.docTipo === 'RG' ? 'RG' : 'CPF';
+  const ids = Array.isArray(input.ids) ? input.ids.map(String) : [];
+  if (!ids.length) throw userError('Selecione quem não poderá ir.');
+
+  return withLock(() => {
+    const sheet = getSheet();
+    const rows = readRows(sheet);
+    const result = findManageable(rows, docTipo, str(input.documento, 30));
+    const allowed = {};
+    result.manageable.forEach((r) => (allowed[r.id] = r));
+
+    if (ids.some((id) => !allowed[id])) {
+      throw userError('Não foi possível cancelar. Faça a consulta novamente.');
+    }
+
+    const statusCol = columnIndex('status') + 1;
+    const cancelledCol = columnIndex('canceladoEm') + 1;
+    const now = new Date();
+    ids.forEach((id) => {
+      const row = allowed[id]._row;
+      sheet.getRange(row, statusCol).setValue(STATUS_CANCELLED);
+      sheet.getRange(row, cancelledCol).setValue(now);
+    });
+    return { ok: true, cancelados: ids.length };
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Área dos noivos
 // ---------------------------------------------------------------------------
 
-function listRsvps(password) {
+function listAll(password) {
   checkPassword(password);
-
-  const sheet = getSheet();
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return { ok: true, rsvps: [] };
-
-  const values = sheet.getRange(2, 1, lastRow - 1, COLUMNS.length).getValues();
-  const rsvps = values
-    .filter((row) => row.some((v) => v !== ''))
-    .map((row) => {
-      const obj = {};
-      COLUMNS.forEach(([key], i) => {
-        let v = row[i];
-        if (v instanceof Date) v = v.toISOString();
-        if (key === 'presenca') v = String(v).toLowerCase().startsWith('s') ? 'sim' : 'nao';
-        obj[key] = v;
-      });
-      return obj;
+  const rows = readRows(getSheet()).map((r) => {
+    const out = {};
+    COLUMNS.forEach(([key]) => {
+      const v = r[key];
+      out[key] = v instanceof Date ? v.toISOString() : v;
     });
-
-  return { ok: true, rsvps: rsvps };
+    return out;
+  });
+  return { ok: true, pessoas: rows };
 }
 
 function checkPassword(password) {
@@ -174,20 +329,69 @@ function checkPassword(password) {
   }
 }
 
+function throttleLookups() {
+  const cache = CacheService.getScriptCache();
+  const count = Number(cache.get('lookups') || 0);
+  if (count >= MAX_LOOKUPS) {
+    throw userError('Muitas consultas no momento. Tente novamente em alguns minutos.');
+  }
+  cache.put('lookups', String(count + 1), LOOKUP_WINDOW_SECONDS);
+}
+
 // ---------------------------------------------------------------------------
-// Utilitários
+// Planilha
 // ---------------------------------------------------------------------------
 
 function getSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    sheet.appendRow(COLUMNS.map(([, header]) => header));
+    sheet.getRange(1, 1, 1, COLUMNS.length)
+      .setValues([COLUMNS.map(([, header]) => header)])
+      .setFontWeight('bold');
     sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, COLUMNS.length).setFontWeight('bold');
   }
   return sheet;
+}
+
+/** Lê todas as linhas como objetos; `_row` guarda o número da linha. */
+function readRows(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  return sheet
+    .getRange(2, 1, lastRow - 1, COLUMNS.length)
+    .getValues()
+    .map((values, i) => {
+      const r = { _row: i + 2 };
+      COLUMNS.forEach(([key], c) => (r[key] = values[c]));
+      r.id = String(r.id);
+      r.status = normalizeStatus(r.status);
+      r.docTipo = String(r.docTipo).trim().toUpperCase();
+      r.documento = String(r.documento);
+      return r;
+    })
+    .filter((r) => r.nome !== '');
+}
+
+/** Aceita o status digitado à mão na planilha ("cancelado", "CANCELADO"...). */
+function normalizeStatus(v) {
+  const s = nameKey(v);
+  if (s.indexOf('cancel') === 0) return STATUS_CANCELLED;
+  if (s.indexOf('confirm') === 0) return STATUS_CONFIRMED;
+  return String(v).trim();
+}
+
+function newFamilyCode(sheet) {
+  const used = {};
+  readRows(sheet).forEach((r) => (used[r.familia] = true));
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let code;
+  do {
+    code = 'AF-';
+    for (let i = 0; i < 5; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  } while (used[code]);
+  return code;
 }
 
 function columnIndex(key) {
@@ -195,13 +399,86 @@ function columnIndex(key) {
 }
 
 function toCell(key, value) {
-  if (value instanceof Date || typeof value === 'number') return value;
+  if (value instanceof Date) return value;
   let s = String(value == null ? '' : value);
-  if (key === 'presenca') return s === 'sim' ? 'Sim' : 'Não';
-  // Impede que texto digitado pelo convidado seja interpretado como fórmula
-  // e mantém o telefone como texto (sem virar número).
-  if (/^[=+\-@\t\r]/.test(s) || key === 'telefone') s = "'" + s;
+  // Documento e telefone ficam como texto (sem virar número) e nada que o
+  // convidado digitar é interpretado como fórmula.
+  if (key === 'documento' || key === 'telefone' || /^[=+\-@\t\r]/.test(s)) {
+    if (s) s = "'" + s;
+  }
   return s;
+}
+
+function withLock(fn) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Documentos e nomes
+// ---------------------------------------------------------------------------
+
+/** Formata o documento para gravar; devolve '' se for inválido. */
+function formatDocument(docTipo, raw) {
+  if (docTipo === 'CPF') {
+    const d = digits(raw);
+    if (!isValidCpf(d)) return '';
+    return d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9);
+  }
+  const rg = String(raw).toUpperCase().replace(/[^0-9A-Z]/g, '');
+  if (rg.length < 5 || rg.length > 14 || !/\d/.test(rg)) return '';
+  return rg;
+}
+
+/** Chave usada para comparar documentos (ignora pontuação). */
+function docKey(docTipo, documento) {
+  const tipo = String(docTipo || '').toUpperCase();
+  const clean = String(documento || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+  if (!clean || (tipo !== 'CPF' && tipo !== 'RG')) return '';
+  return tipo + ':' + clean;
+}
+
+/** Chave usada para comparar nomes: sem acento, minúsculo, espaços únicos. */
+function nameKey(nome) {
+  return String(nome || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isValidCpf(d) {
+  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
+  for (let len = 9; len <= 10; len++) {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(d[i]) * (len + 1 - i);
+    const check = ((sum * 10) % 11) % 10;
+    if (check !== Number(d[len])) return false;
+  }
+  return true;
+}
+
+/** "Maria Silva Souza" -> "Maria S." (para não expor nomes completos). */
+function maskName(nome) {
+  const parts = String(nome || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0];
+  return parts[0] + ' ' + parts[parts.length - 1][0].toUpperCase() + '.';
+}
+
+// ---------------------------------------------------------------------------
+// Utilitários
+// ---------------------------------------------------------------------------
+
+function str(v, max) {
+  return String(v == null ? '' : v).trim().slice(0, max);
 }
 
 function digits(s) {

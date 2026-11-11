@@ -1,8 +1,8 @@
 // Configurações do casamento. Edite aqui sem mexer no resto do código.
 window.WEDDING_CONFIG = {
   // URL do Web App publicado no Google Apps Script (veja o README).
-  // Enquanto estiver vazio, o site roda em "modo demonstração": as respostas
-  // ficam salvas só no navegador e a senha da área dos noivos é "demo".
+  // Enquanto estiver vazio, o formulário fica desativado com um aviso.
+  // Para testar localmente use `node dev/server.js` (veja o README).
   apiUrl: "",
 
   // Data/hora da cerimônia no formato ISO (usado na contagem regressiva).
@@ -18,6 +18,6 @@ window.WEDDING_CONFIG = {
 
   rsvpDeadlineLabel: "19 de junho de 2027",
 
-  // Número máximo de acompanhantes por convite.
-  maxCompanions: 5,
+  // Máximo de acompanhantes por família (igual ao MAX_COMPANIONS do Code.gs).
+  maxCompanions: 10,
 };

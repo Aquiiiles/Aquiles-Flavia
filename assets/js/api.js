@@ -1,14 +1,12 @@
-// Camada de comunicação com o backend (Google Apps Script).
-// Sem apiUrl configurada, usa o localStorage para permitir testar o site.
+// Comunicação com o backend (Google Apps Script).
 window.Api = (() => {
   const cfg = window.WEDDING_CONFIG;
-  const isDemo = !cfg.apiUrl;
-  const DEMO_KEY = "af_demo_rsvps";
-  const DEMO_PASSWORD = "demo";
+  const isConfigured = Boolean(cfg.apiUrl);
 
   async function call(payload) {
-    if (isDemo) return demo(payload);
-
+    if (!isConfigured) {
+      throw new Error("O sistema de confirmação ainda não foi configurado.");
+    }
     // text/plain evita o preflight de CORS, que o Apps Script não suporta.
     const res = await fetch(cfg.apiUrl, {
       method: "POST",
@@ -18,41 +16,19 @@ window.Api = (() => {
     });
     if (!res.ok) throw new Error("Falha de conexão (" + res.status + ").");
     const data = await res.json();
-    if (!data.ok) throw new Error(data.error || "Erro desconhecido.");
+    if (!data.ok) {
+      const err = new Error(data.error || "Erro desconhecido.");
+      err.data = data;
+      throw err;
+    }
     return data;
   }
 
-  function digits(s) {
-    return String(s || "").replace(/\D/g, "");
-  }
-
-  function demo(payload) {
-    const list = JSON.parse(localStorage.getItem(DEMO_KEY) || "[]");
-    if (payload.action === "rsvp") {
-      const r = payload.data;
-      const entry = {
-        ...r,
-        timestamp: new Date().toISOString(),
-        totalPessoas: r.presenca === "sim" ? 1 + Number(r.acompanhantes || 0) : 0,
-      };
-      const i = list.findIndex((x) => digits(x.telefone) === digits(r.telefone));
-      if (i >= 0) list[i] = entry;
-      else list.push(entry);
-      localStorage.setItem(DEMO_KEY, JSON.stringify(list));
-      return Promise.resolve({ ok: true, updated: i >= 0 });
-    }
-    if (payload.action === "list") {
-      if (payload.password !== DEMO_PASSWORD) {
-        return Promise.reject(new Error("Senha incorreta."));
-      }
-      return Promise.resolve({ ok: true, rsvps: list });
-    }
-    return Promise.reject(new Error("Ação inválida."));
-  }
-
   return {
-    isDemo,
+    isConfigured,
     sendRsvp: (data) => call({ action: "rsvp", data }),
-    listRsvps: (password) => call({ action: "list", password }),
+    lookup: (docTipo, documento) => call({ action: "lookup", data: { docTipo, documento } }),
+    cancel: (docTipo, documento, ids) => call({ action: "cancel", data: { docTipo, documento, ids } }),
+    listAll: (password) => call({ action: "list", password }),
   };
 })();

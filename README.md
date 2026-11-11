@@ -1,7 +1,7 @@
 # Aquiles & Flavia: confirmação de presença
 
-Site do casamento, com formulário de confirmação (RSVP) e uma **área dos noivos**
-protegida por senha, onde só Aquiles e Flavia veem quem confirmou.
+Site do casamento com confirmação de presença por família, consulta e
+cancelamento, e uma **área dos noivos** protegida por senha.
 
 ## Como funciona
 
@@ -12,69 +12,77 @@ Noivos ──► admin.html + senha ──────────────�
 ```
 
 - **Site** (`index.html`, `admin.html`, `assets/`): HTML/CSS/JS puro, sem build.
-- **Backend** (`apps-script/Code.gs`): Web App gratuito do Google que grava as
-  respostas numa planilha **privada** de vocês.
-- **Área dos noivos** (`admin.html`): pede a senha e só recebe a lista se o
-  servidor validar. A senha fica guardada no Apps Script, nunca no código do site.
-  Após 10 senhas erradas, o login é bloqueado por 15 minutos.
-- Se o convidado responder de novo com o **mesmo telefone**, a resposta anterior
-  é atualizada (não duplica).
+- **Backend** (`apps-script/Code.gs`): Web App gratuito do Google que grava na
+  aba `Confirmacoes` da planilha dos noivos.
+- **Área dos noivos** (`admin.html`): só mostra a lista se o servidor validar a
+  senha. A senha fica no Apps Script, nunca no código do site.
 
-A área dos noivos mostra: total de pessoas confirmadas, quantos vão e quantos não
-vão, filtro, busca, e botão para exportar CSV (abre no Excel).
+### Regras da confirmação
 
-## Configuração (uns 10 minutos)
+- **Representante da família**: uma pessoa confirma por todos. Só ela informa
+  telefone e e-mail.
+- **Documento (CPF ou RG) de cada pessoa**: é o que impede confirmar a mesma
+  pessoa duas vezes. O CPF é validado pelos dígitos verificadores.
+- **Crianças (até 12 anos)** podem ir sem documento.
+- **Duplicidade**: uma pessoa é recusada se o documento **ou** o nome (ignorando
+  acentos e maiúsculas) já estiver confirmado. O site mostra qual pessoa foi
+  recusada e em qual família ela já está.
+- **Consultar ou cancelar**: com o documento do representante, dá para ver e
+  cancelar qualquer pessoa da família; com o de um acompanhante, só a própria
+  presença. Os nomes aparecem abreviados ("Maria S.") para não expor ninguém.
+- **Cancelar não apaga**: a linha fica com status `Cancelado` e a data. A pessoa
+  pode confirmar de novo depois.
 
-### 1. Planilha + backend
+### A planilha
 
-1. Crie uma planilha nova em <https://sheets.new> (ex.: "Casamento - Confirmações").
-   Compartilhe **só** com a Flavia.
-2. Na planilha: **Extensões > Apps Script**.
-3. Apague o conteúdo de `Code.gs` e cole o conteúdo de [`apps-script/Code.gs`](apps-script/Code.gs).
-4. Clique na engrenagem **Configurações do projeto > Propriedades do script >
+Cada linha é **uma pessoa**. Colunas: ID, Código da família, Data/Hora, Status,
+Nome, Tipo (Representante/Acompanhante), Criança, Tipo de documento, Documento,
+Representante, Telefone, E-mail, Restrições alimentares, Mensagem, Cancelado em.
+
+Vocês podem editar à mão: trocar o Status para `Cancelado` libera aquela pessoa
+para confirmar de novo. Não mudem a ordem das colunas nem o ID.
+
+> ⚠️ **A planilha vai guardar CPF/RG e telefone dos convidados.** Ela precisa ser
+> **privada**: em *Compartilhar*, deixe "Acesso geral: **Restrito**" e adicione só
+> vocês dois. O script não precisa que a planilha seja pública.
+
+## Configuração do backend (uns 10 minutos)
+
+O ID da planilha de vocês já está no `apps-script/Code.gs`.
+
+1. Abra a planilha e vá em **Extensões > Apps Script**.
+2. Apague o conteúdo de `Code.gs` e cole o conteúdo de [`apps-script/Code.gs`](apps-script/Code.gs).
+3. Clique na engrenagem **Configurações do projeto > Propriedades do script >
    Adicionar propriedade**:
    - Propriedade: `ADMIN_PASSWORD`
-   - Valor: a senha que vocês dois vão usar (escolha uma forte).
-5. No editor, selecione a função `setup` e clique em **Executar**. Autorize o acesso
-   quando o Google pedir (isso cria a aba `Confirmacoes`).
-6. **Implantar > Nova implantação > Tipo: App da Web**:
+   - Valor: a senha que vocês dois vão usar (use uma senha forte).
+4. No editor, selecione a função `setup` e clique em **Executar**. Autorize o acesso
+   quando o Google pedir. Isso cria a aba `Confirmacoes`.
+5. **Implantar > Nova implantação > Tipo: App da Web**:
    - Executar como: **Eu**
    - Quem pode acessar: **Qualquer pessoa**
-7. Copie a URL gerada (termina em `/exec`).
+6. Copie a URL gerada (termina em `/exec`) e coloque em `apiUrl` no
+   [`assets/js/config.js`](assets/js/config.js).
 
 > Se alterar o `Code.gs` depois, use **Implantar > Gerenciar implantações > Editar >
 > Nova versão** para manter a mesma URL.
 
-### 2. Site
+Enquanto `apiUrl` estiver vazio, o formulário aparece desativado com o aviso
+"As confirmações abrem em breve".
 
-Edite [`assets/js/config.js`](assets/js/config.js):
+## Publicação
 
-- `apiUrl`: cole a URL do passo 7;
-- data, horário, local, link do mapa, traje e prazo de confirmação.
+Cada push na `main` publica o site no GitHub Pages pelo workflow
+`.github/workflows/pages.yml` (só `index.html`, `admin.html` e `assets/` vão
+para o ar). Endereço: `https://aquiiiles.github.io/Aquiles-Flavia/`.
 
-### 3. Publicar no GitHub Pages
+## Desenvolvimento local
 
-1. No GitHub: **Settings > Pages > Source: GitHub Actions**.
-2. Faça merge na branch `main`. O workflow `.github/workflows/pages.yml` publica o site.
-3. O endereço fica em `https://<usuario>.github.io/<repositorio>/`.
-   A área dos noivos fica em `.../admin.html` (tem um link discreto no rodapé).
-
-## Testando localmente
-
-Sem `apiUrl` configurada, o site roda em **modo demonstração**: as respostas ficam
-só no seu navegador e a senha da área dos noivos é `demo`.
+Precisa só de Node.js (18+). O backend roda localmente com uma simulação dos
+serviços do Google (`dev/gas-mock.js`), usando o mesmo `Code.gs`.
 
 ```bash
-python3 -m http.server 8000
-# abra http://localhost:8000
+npm test          # testes do backend (duplicidade, cancelamento, senha...)
+npm run dev       # site + backend simulado em http://localhost:8000
+                  # senha da área dos noivos: "teste"
 ```
-
-## Segurança
-
-- A senha **não** está no código do site; é comparada no Apps Script.
-- A planilha só é acessível pelas contas Google que vocês escolherem.
-- Textos dos convidados são exibidos com `textContent` (sem risco de injetar HTML)
-  e gravados na planilha de forma que não virem fórmulas.
-- O formulário tem um campo invisível (honeypot) para barrar robôs.
-- Qualquer pessoa com a URL do Apps Script consegue **enviar** uma confirmação
-  (é o que o formulário faz), mas **ler** a lista exige a senha.

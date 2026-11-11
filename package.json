@@ -1,0 +1,12 @@
+{
+  "name": "aquiles-flavia",
+  "private": true,
+  "description": "Site de confirmação de presença do casamento de Aquiles & Flavia",
+  "scripts": {
+    "test": "node --test dev/*.test.js",
+    "dev": "node dev/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

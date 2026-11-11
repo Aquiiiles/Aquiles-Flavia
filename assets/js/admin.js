@@ -1,5 +1,6 @@
 (() => {
   const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
   const SESSION_KEY = "af_admin_pw";
 
   const loginView = $("#login-view");
@@ -8,15 +9,23 @@
   const loginStatus = $("#login-status");
   const tbody = $("#rsvp-rows");
 
-  let rsvps = [];
-  let filter = "todos";
+  let pessoas = [];
+  let filter = "Confirmado";
   let search = "";
 
-  if (window.Api.isDemo) $("#demo-banner").hidden = false;
-
   async function load(password) {
-    const res = await window.Api.listRsvps(password);
-    rsvps = (res.rsvps || []).sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+    const res = await window.Api.listAll(password);
+    // Famílias mais recentes primeiro; dentro da família, o representante na frente.
+    const familyTime = {};
+    res.pessoas.forEach((p) => {
+      if (!familyTime[p.familia] || p.timestamp > familyTime[p.familia]) familyTime[p.familia] = p.timestamp;
+    });
+    pessoas = res.pessoas.sort(
+      (a, b) =>
+        String(familyTime[b.familia]).localeCompare(String(familyTime[a.familia])) ||
+        String(a.familia).localeCompare(String(b.familia)) ||
+        (a.papel === "Representante" ? -1 : b.papel === "Representante" ? 1 : 0)
+    );
     sessionStorage.setItem(SESSION_KEY, password);
     loginView.hidden = true;
     dashView.hidden = false;
@@ -43,9 +52,8 @@
   });
 
   $("#refresh-btn").addEventListener("click", async () => {
-    const pw = sessionStorage.getItem(SESSION_KEY);
     try {
-      await load(pw);
+      await load(sessionStorage.getItem(SESSION_KEY));
     } catch (err) {
       alert("Erro ao atualizar: " + err.message);
     }
@@ -53,16 +61,16 @@
 
   $("#logout-btn").addEventListener("click", () => {
     sessionStorage.removeItem(SESSION_KEY);
-    rsvps = [];
+    pessoas = [];
     tbody.replaceChildren();
     dashView.hidden = true;
     loginView.hidden = false;
   });
 
-  document.querySelectorAll("[data-filter]").forEach((btn) => {
+  $$("[data-filter]").forEach((btn) => {
     btn.addEventListener("click", () => {
       filter = btn.dataset.filter;
-      document.querySelectorAll("[data-filter]").forEach((b) => b.classList.toggle("active", b === btn));
+      $$("[data-filter]").forEach((b) => b.classList.toggle("active", b === btn));
       render();
     });
   });
@@ -74,7 +82,7 @@
 
   function formatDate(ts) {
     const d = new Date(ts);
-    return isNaN(d) ? String(ts || "") : d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    return ts && !isNaN(d) ? d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
   }
 
   function cell(text, className) {
@@ -84,44 +92,55 @@
     return td;
   }
 
-  function render() {
-    const yes = rsvps.filter((r) => r.presenca === "sim");
-    const no = rsvps.filter((r) => r.presenca === "nao");
-    $("#stat-people").textContent = yes.reduce((sum, r) => sum + Number(r.totalPessoas || 0), 0);
-    $("#stat-yes").textContent = yes.length;
-    $("#stat-no").textContent = no.length;
-    $("#stat-total").textContent = rsvps.length;
+  function badge(text, kind) {
+    const td = document.createElement("td");
+    const span = document.createElement("span");
+    span.className = "badge badge-" + kind;
+    span.textContent = text;
+    td.appendChild(span);
+    return td;
+  }
 
-    const visible = rsvps.filter((r) => {
-      if (filter === "sim" && r.presenca !== "sim") return false;
-      if (filter === "nao" && r.presenca !== "nao") return false;
+  function render() {
+    const active = pessoas.filter((p) => p.status === "Confirmado");
+    const kids = active.filter((p) => p.crianca === "Sim").length;
+    $("#stat-people").textContent = active.length;
+    $("#stat-adults").textContent = active.length - kids;
+    $("#stat-kids").textContent = kids;
+    $("#stat-families").textContent = new Set(active.map((p) => p.familia)).size;
+    $("#stat-cancelled").textContent = pessoas.filter((p) => p.status === "Cancelado").length;
+
+    const visible = pessoas.filter((p) => {
+      if (filter !== "todos" && p.status !== filter) return false;
       if (!search) return true;
-      return [r.nome, r.nomesAcompanhantes, r.telefone, r.email]
+      return [p.nome, p.documento, p.representante, p.telefone, p.email, p.familia]
         .join(" ")
         .toLowerCase()
         .includes(search);
     });
 
     // textContent em todas as células: nada vindo dos convidados vira HTML.
+    let lastFamily = null;
     tbody.replaceChildren(
-      ...visible.map((r) => {
+      ...visible.map((p) => {
         const tr = document.createElement("tr");
-        const badge = document.createElement("span");
-        badge.className = "badge " + (r.presenca === "sim" ? "badge-yes" : "badge-no");
-        badge.textContent = r.presenca === "sim" ? "Vai" : "Não vai";
-        const tdBadge = document.createElement("td");
-        tdBadge.appendChild(badge);
+        if (p.familia !== lastFamily) tr.className = "family-start";
+        lastFamily = p.familia;
 
+        const confirmed = p.status === "Confirmado";
+        const tipo = p.papel === "Representante" ? "Representante" : p.crianca === "Sim" ? "Criança" : "Acompanhante";
         tr.append(
-          cell(r.nome, "strong"),
-          tdBadge,
-          cell(r.presenca === "sim" ? r.totalPessoas : "–", "num"),
-          cell(r.nomesAcompanhantes),
-          cell(r.telefone),
-          cell(r.email),
-          cell(r.restricoes),
-          cell(r.mensagem, "msg"),
-          cell(formatDate(r.timestamp), "muted")
+          cell(p.nome, "strong"),
+          badge(confirmed ? "Confirmado" : "Cancelado", confirmed ? "yes" : "no"),
+          cell(tipo),
+          cell(p.documento ? p.docTipo + " " + p.documento : "–", "nowrap"),
+          cell(p.papel === "Representante" ? "–" : p.representante),
+          cell(p.telefone, "nowrap"),
+          cell(p.email),
+          cell(p.restricoes),
+          cell(p.mensagem, "msg"),
+          cell(p.familia, "muted"),
+          cell(confirmed ? formatDate(p.timestamp) : "Cancelado em " + formatDate(p.canceladoEm), "muted")
         );
         return tr;
       })
@@ -131,15 +150,20 @@
 
   $("#export-btn").addEventListener("click", () => {
     const cols = [
-      ["Nome", "nome"],
-      ["Presença", "presenca"],
-      ["Total de pessoas", "totalPessoas"],
-      ["Acompanhantes", "nomesAcompanhantes"],
-      ["Telefone", "telefone"],
-      ["E-mail", "email"],
-      ["Restrições alimentares", "restricoes"],
-      ["Mensagem", "mensagem"],
-      ["Data da resposta", "timestamp"],
+      ["Nome", (p) => p.nome],
+      ["Status", (p) => p.status],
+      ["Tipo", (p) => p.papel],
+      ["Criança", (p) => p.crianca],
+      ["Tipo de documento", (p) => p.docTipo],
+      ["Documento", (p) => p.documento],
+      ["Representante", (p) => p.representante],
+      ["Telefone", (p) => p.telefone],
+      ["E-mail", (p) => p.email],
+      ["Restrições alimentares", (p) => p.restricoes],
+      ["Mensagem", (p) => p.mensagem],
+      ["Família", (p) => p.familia],
+      ["Confirmado em", (p) => formatDate(p.timestamp)],
+      ["Cancelado em", (p) => formatDate(p.canceladoEm)],
     ];
     const esc = (v) => {
       let s = String(v == null ? "" : v);
@@ -147,11 +171,11 @@
       return '"' + s.replace(/"/g, '""') + '"';
     };
     const lines = [cols.map((c) => esc(c[0])).join(";")];
-    rsvps.forEach((r) => lines.push(cols.map((c) => esc(r[c[1]])).join(";")));
+    pessoas.forEach((p) => lines.push(cols.map((c) => esc(c[1](p))).join(";")));
     const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "confirmacoes-aquiles-flavia.csv";
+    a.download = "convidados-aquiles-flavia.csv";
     a.click();
     URL.revokeObjectURL(a.href);
   });
