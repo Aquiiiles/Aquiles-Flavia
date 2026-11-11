@@ -55,6 +55,10 @@ class FakeSheet {
   getRange(row, col, numRows = 1, numCols = 1) {
     return new FakeRange(this, row, col, numRows, numCols);
   }
+  deleteRow(row) {
+    this.data.splice(row - 1, 1);
+    this.raw.splice(row - 1, 1);
+  }
   appendRow(values) {
     this.getRange(this.data.length + 1, 1, 1, values.length).setValues([values]);
   }

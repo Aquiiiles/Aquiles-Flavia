@@ -266,3 +266,73 @@ test("nomes em outros alfabetos funcionam e só números não é nome", () => {
   assert.equal(dup.duplicates[0].motivo, "nome");
   assert.match(b.post({ action: "rsvp", data: rep("123 456", "TK0000001") }).error, /nome e sobrenome/);
 });
+
+test("noivos adicionam pessoa numa família existente e numa família nova", () => {
+  const b = createBackend();
+  const { familia } = b.post({ action: "rsvp", data: family() });
+
+  // Sem senha não pode.
+  assert.equal(b.post({ action: "adminAdd", password: "errada", data: { nome: "Vó Silva" } }).ok, false);
+
+  // Na família existente, sem documento.
+  let res = b.post({ action: "adminAdd", password: "senha-teste", data: { nome: "Vovó Silva", familia: familia.toLowerCase() } });
+  assert.equal(res.ok, true, res.error);
+  assert.equal(res.familia, familia);
+
+  // Família nova, com documento e telefone.
+  res = b.post({
+    action: "adminAdd",
+    password: "senha-teste",
+    data: { nome: "Pastor Carlos Lima", docTipo: "CPF", documento: cpf(444555666), telefone: "21922223333" },
+  });
+  assert.equal(res.ok, true, res.error);
+  assert.notEqual(res.familia, familia);
+
+  const list = b.post({ action: "list", password: "senha-teste" }).pessoas;
+  const vo = list.find((p) => p.nome === "Vovó Silva");
+  assert.equal(vo.papel, "Acompanhante");
+  assert.equal(vo.representante, "Maria Silva");
+  assert.equal(vo.documento, "");
+  const pastor = list.find((p) => p.nome === "Pastor Carlos Lima");
+  assert.equal(pastor.papel, "Representante");
+  assert.equal(pastor.telefone, "21922223333");
+  assert.equal(pastor.mensagem, "(adicionado pelos noivos)");
+});
+
+test("noivos não adicionam duplicado nem em família inexistente", () => {
+  const b = createBackend();
+  b.post({ action: "rsvp", data: family() });
+  const add = (data) => b.post({ action: "adminAdd", password: "senha-teste", data });
+  assert.match(add({ nome: "joao silva" }).error, /já está confirmado/);
+  assert.match(add({ nome: "Fulano Novo", docTipo: "RG", documento: "123456789" }).error, /com esse documento/);
+  assert.match(add({ nome: "Fulano Novo", familia: "AF-XXXXX" }).error, /não encontrada/);
+  assert.match(add({ nome: "Fulano Novo", docTipo: "CPF", documento: "123" }).error, /CPF inválido/);
+});
+
+test("noivos apagam pessoas e a planilha fica consistente", () => {
+  const b = createBackend();
+  b.post({ action: "rsvp", data: family() });
+  const before = b.post({ action: "list", password: "senha-teste" }).pessoas;
+  const [maria, joao, kid] = before;
+
+  assert.equal(b.post({ action: "adminDelete", password: "errada", ids: [joao.id] }).ok, false);
+
+  const res = b.post({ action: "adminDelete", password: "senha-teste", ids: [maria.id, kid.id] });
+  assert.equal(res.ok, true, res.error);
+  assert.equal(res.apagados, 2);
+
+  const after = b.post({ action: "list", password: "senha-teste" }).pessoas;
+  assert.deepEqual(after.map((p) => p.nome), ["João Silva"]);
+  assert.equal(b.sheet().data.length, 2, "cabeçalho + 1 linha");
+
+  // Id que já não existe: recusa sem apagar nada.
+  assert.match(b.post({ action: "adminDelete", password: "senha-teste", ids: [joao.id, maria.id] }).error, /Atualizar/);
+  assert.equal(b.post({ action: "list", password: "senha-teste" }).pessoas.length, 1);
+
+  // Depois de apagada, a pessoa pode confirmar de novo.
+  const again = b.post({
+    action: "rsvp",
+    data: { representante: { ...family().representante }, membros: [] },
+  });
+  assert.equal(again.ok, true, again.error);
+});
