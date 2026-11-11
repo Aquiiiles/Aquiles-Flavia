@@ -3,7 +3,7 @@ window.WEDDING_CONFIG = {
   // URL do Web App publicado no Google Apps Script (veja o README).
   // Enquanto estiver vazio, o formulário fica desativado com um aviso.
   // Para testar localmente use `node dev/server.js` (veja o README).
-  apiUrl: "",
+  apiUrl: "https://script.google.com/macros/s/AKfycbyDanqZ1sWej2qhazu13a3YEXbMLqsMcIQHa2QOMgFgcDGCpt0PXHFfY2HUq359is4_Qg/exec",
 
   // Data/hora da cerimônia no formato ISO (usado na contagem regressiva).
   date: "2027-08-19T16:00:00-03:00",
