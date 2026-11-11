@@ -13,10 +13,6 @@
   <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-  <div id="demo-banner" class="demo-banner" hidden>
-    Modo demonstração: as respostas ficam salvas apenas neste navegador. Configure o <code>apiUrl</code> em <code>assets/js/config.js</code>.
-  </div>
-
   <nav class="nav">
     <a href="#inicio">Início</a>
     <a href="#detalhes">Detalhes</a>
@@ -73,73 +69,148 @@
         <strong data-cfg="rsvpDeadlineLabel"></strong>.
       </p>
 
-      <form id="rsvp-form" class="rsvp-form" novalidate>
-        <div class="field">
-          <label for="nome">Nome completo *</label>
-          <input id="nome" name="nome" type="text" required minlength="2" maxlength="100" autocomplete="name">
-        </div>
+      <p id="not-configured" class="notice" hidden>
+        As confirmações abrem em breve. Volte aqui daqui a alguns dias!
+      </p>
 
-        <div class="field-row">
-          <div class="field">
-            <label for="telefone">Telefone / WhatsApp *</label>
-            <input id="telefone" name="telefone" type="tel" required placeholder="(11) 99999-9999" autocomplete="tel" inputmode="tel">
-          </div>
-          <div class="field">
-            <label for="email">E-mail</label>
-            <input id="email" name="email" type="email" maxlength="120" autocomplete="email">
-          </div>
-        </div>
-
-        <fieldset class="field choice">
-          <legend>Você vai comparecer? *</legend>
-          <label class="choice-opt">
-            <input type="radio" name="presenca" value="sim" required>
-            <span>Sim, estarei lá!</span>
-          </label>
-          <label class="choice-opt">
-            <input type="radio" name="presenca" value="nao">
-            <span>Infelizmente não poderei ir</span>
-          </label>
-        </fieldset>
-
-        <div id="attending-fields" hidden>
-          <div class="field">
-            <label for="acompanhantes">Quantos acompanhantes virão com você?</label>
-            <select id="acompanhantes" name="acompanhantes"></select>
-          </div>
-
-          <div id="field-nomes-acompanhantes" class="field" hidden>
-            <label for="nomes-acompanhantes">Nome dos acompanhantes *</label>
-            <textarea id="nomes-acompanhantes" name="nomesAcompanhantes" rows="2" maxlength="500" placeholder="Um nome por linha ou separados por vírgula"></textarea>
-          </div>
-
-          <div class="field">
-            <label for="restricoes">Alguma restrição alimentar?</label>
-            <input id="restricoes" name="restricoes" type="text" maxlength="300" placeholder="Ex.: vegetariano, alergia a camarão...">
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="mensagem">Deixe um recado para os noivos</label>
-          <textarea id="mensagem" name="mensagem" rows="3" maxlength="1000"></textarea>
-        </div>
-
-        <!-- Campo invisível para barrar robôs de spam -->
-        <div class="hp" aria-hidden="true">
-          <label for="website">Não preencha</label>
-          <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
-        </div>
-
-        <button id="submit-btn" type="submit" class="btn btn-primary btn-block">Enviar confirmação</button>
-        <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
-      </form>
-
-      <div id="rsvp-done" class="rsvp-done" hidden>
-        <div class="done-icon" aria-hidden="true">&#10084;</div>
-        <h3 id="done-title"></h3>
-        <p id="done-text"></p>
-        <button id="rsvp-again" type="button" class="btn btn-ghost">Enviar outra resposta</button>
+      <div class="tabs tabs-center" role="tablist">
+        <button class="tab active" type="button" role="tab" data-tab="panel-rsvp" aria-selected="true">Confirmar presença</button>
+        <button class="tab" type="button" role="tab" data-tab="panel-cancel" aria-selected="false">Consultar ou cancelar</button>
       </div>
+
+      <!-- Confirmar -->
+      <div id="panel-rsvp" role="tabpanel">
+        <form id="rsvp-form" class="rsvp-form" novalidate>
+          <p class="form-intro">
+            Uma pessoa da família confirma por todos. Ela é o <strong>representante</strong>
+            e só ela precisa informar telefone. Pedimos um documento de cada convidado
+            para evitar confirmações em duplicidade.
+          </p>
+
+          <fieldset class="person person-rep">
+            <legend>Representante da família</legend>
+            <div class="field">
+              <label for="rep-nome">Nome completo *</label>
+              <input id="rep-nome" type="text" required maxlength="100" autocomplete="name">
+            </div>
+            <div class="field">
+              <label for="rep-doc">Documento *</label>
+              <div class="doc-input">
+                <select id="rep-doc-tipo" aria-label="Tipo de documento">
+                  <option value="CPF">CPF</option>
+                  <option value="RG">RG</option>
+                </select>
+                <input id="rep-doc" type="text" required inputmode="numeric" maxlength="20" placeholder="000.000.000-00" autocomplete="off">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="rep-telefone">Telefone / WhatsApp *</label>
+                <input id="rep-telefone" type="tel" required placeholder="(21) 99999-9999" autocomplete="tel" inputmode="tel">
+              </div>
+              <div class="field">
+                <label for="rep-email">E-mail</label>
+                <input id="rep-email" type="email" maxlength="120" autocomplete="email">
+              </div>
+            </div>
+            <p class="person-error" hidden></p>
+          </fieldset>
+
+          <div id="members"></div>
+
+          <button id="add-member" type="button" class="btn btn-ghost btn-block btn-add">+ Adicionar acompanhante</button>
+          <p class="hint" id="members-hint"></p>
+
+          <div class="field">
+            <label for="restricoes">Alguma restrição alimentar na família?</label>
+            <input id="restricoes" type="text" maxlength="300" placeholder="Ex.: vegetariano, alergia a camarão...">
+          </div>
+
+          <div class="field">
+            <label for="mensagem">Deixe um recado para os noivos</label>
+            <textarea id="mensagem" rows="3" maxlength="1000"></textarea>
+          </div>
+
+          <!-- Campo invisível para barrar robôs de spam -->
+          <div class="hp" aria-hidden="true">
+            <label for="website">Não preencha</label>
+            <input id="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
+
+          <button id="submit-btn" type="submit" class="btn btn-primary btn-block">Confirmar presença</button>
+          <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
+        </form>
+
+        <div id="rsvp-done" class="rsvp-done" hidden>
+          <div class="done-icon" aria-hidden="true">&#10084;</div>
+          <h3>Presença confirmada!</h3>
+          <p id="done-text"></p>
+          <ul id="done-list" class="done-list"></ul>
+          <p class="muted small">
+            Código da confirmação: <strong id="done-code"></strong><br>
+            Se precisar cancelar, use a aba "Consultar ou cancelar" com o documento do representante.
+          </p>
+          <button id="rsvp-again" type="button" class="btn btn-ghost">Confirmar outra família</button>
+        </div>
+      </div>
+
+      <!-- Consultar / cancelar -->
+      <div id="panel-cancel" role="tabpanel" hidden>
+        <form id="lookup-form" class="rsvp-form" novalidate>
+          <p class="form-intro">
+            Informe o documento usado na confirmação. Com o documento do
+            <strong>representante</strong> você vê e pode cancelar a família toda;
+            com o de um acompanhante, só a própria presença.
+          </p>
+          <div class="field">
+            <label for="lookup-doc">Documento</label>
+            <div class="doc-input">
+              <select id="lookup-doc-tipo" aria-label="Tipo de documento">
+                <option value="CPF">CPF</option>
+                <option value="RG">RG</option>
+              </select>
+              <input id="lookup-doc" type="text" required inputmode="numeric" maxlength="20" placeholder="000.000.000-00" autocomplete="off">
+            </div>
+          </div>
+          <button id="lookup-btn" type="submit" class="btn btn-primary btn-block">Consultar</button>
+          <p id="lookup-status" class="form-status" role="status" aria-live="polite"></p>
+        </form>
+
+        <div id="lookup-result" class="rsvp-form" hidden>
+          <h3 class="result-title">Presenças confirmadas</h3>
+          <p class="muted small">Marque quem <strong>não</strong> poderá ir e clique em cancelar.</p>
+          <div id="lookup-people" class="check-list"></div>
+          <button id="cancel-btn" type="button" class="btn btn-danger btn-block">Cancelar presença selecionada</button>
+          <button id="lookup-back" type="button" class="btn btn-link btn-block">Consultar outro documento</button>
+          <p id="cancel-status" class="form-status" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <template id="member-template">
+        <fieldset class="person">
+          <legend>Acompanhante <span class="member-n"></span></legend>
+          <button type="button" class="remove-member" aria-label="Remover acompanhante">&times;</button>
+          <div class="field">
+            <label>Nome completo *</label>
+            <input class="m-nome" type="text" required maxlength="100" autocomplete="off">
+          </div>
+          <label class="check">
+            <input class="m-crianca" type="checkbox">
+            <span>É criança (até 12 anos). Documento opcional.</span>
+          </label>
+          <div class="field">
+            <label>Documento <span class="m-doc-req">*</span></label>
+            <div class="doc-input">
+              <select class="m-doc-tipo" aria-label="Tipo de documento">
+                <option value="CPF">CPF</option>
+                <option value="RG">RG</option>
+              </select>
+              <input class="m-doc" type="text" inputmode="numeric" maxlength="20" placeholder="000.000.000-00" autocomplete="off">
+            </div>
+          </div>
+          <p class="person-error" hidden></p>
+        </fieldset>
+      </template>
     </section>
   </main>
 
