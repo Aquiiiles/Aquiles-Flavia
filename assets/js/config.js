@@ -18,6 +18,13 @@ window.WEDDING_CONFIG = {
 
   rsvpDeadlineLabel: "19 de junho de 2027",
 
+  // Fotos da seção "Nossa história". Coloque os arquivos em assets/img/historia/
+  // e liste aqui, por exemplo:
+  //   { src: "assets/img/historia/foto1.jpg", alt: "Aquiles e Flavia na praia" },
+  // Enquanto a lista estiver vazia, aparecem molduras "fotos em breve".
+  storyPhotos: [],
+  storyPhotoSlots: 3,
+
   // Presente via Pix. Para esconder a seção, deixe `key` vazio.
   pix: {
     key: "22946f21-cb3c-4ba5-b720-43b1fce62bdb",
