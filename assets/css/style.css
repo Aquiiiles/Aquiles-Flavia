@@ -238,6 +238,8 @@ h1, h2, h3 { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600
   margin-bottom: 6px;
 }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field-row-age { grid-template-columns: 1fr 96px; }
+.m-doc-opt { margin-left: 6px; font-weight: 400; color: var(--muted); }
 
 input[type="text"], input[type="tel"], input[type="email"], input[type="password"],
 input[type="search"], select, textarea {
@@ -683,6 +685,7 @@ textarea { resize: vertical; }
   .countdown { gap: 8px; }
   .countdown div { min-width: 64px; }
   .field-row { grid-template-columns: 1fr; gap: 0; }
+  .field-row-age { grid-template-columns: 1fr 80px; gap: 12px; }
   .rsvp-form, .rsvp-done, .login-card { padding: 28px 20px; }
   .search { max-width: none; width: 100%; }
 }
