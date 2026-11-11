@@ -14,7 +14,8 @@
 </head>
 <body>
   <nav class="nav">
-    <a href="#inicio">Início</a>
+    <a href="#inicio" class="nav-home">Início</a>
+    <a href="#historia"><span class="nav-long">Nossa </span>História</a>
     <a href="#detalhes">Detalhes</a>
     <a href="#confirmar">Confirmar<span class="nav-long"> presença</span></a>
     <a href="#presente">Presente</a>
@@ -42,6 +43,64 @@
   </header>
 
   <main>
+    <section id="historia" class="section section-story">
+      <h2 class="section-title">Nossa história</h2>
+      <div class="divider" aria-hidden="true"><span>&#10084;</span></div>
+
+      <div class="story">
+        <p class="story-lead">
+          Nossa história começou no Acampamento Jovem Reformado, do Projeto Soli Deo Gloria.
+          Foi lá que nos conhecemos, mas, para falar a verdade, quase não conversamos durante
+          o acampamento! Naquela época, nem imaginávamos o que o Senhor estava preparando.
+        </p>
+        <p>
+          Depois do acampamento, por providência de Deus, acabamos nos aproximando e começamos
+          a conversar. O que eram conversas despretensiosas foi se tornando algo cada vez mais
+          especial. Mesmo com a distância entre Recife e Rio de Janeiro, fomos encontrando
+          maneiras de estar presentes na vida um do outro, entre mensagens, ligações e muitas
+          conversas.
+        </p>
+        <p>
+          Até que Aquiles resolveu sair um pouco da tela do celular e pegar um avião rumo ao
+          Rio de Janeiro! A viagem tinha um motivo especial: conhecer a família de Flavia e
+          conversar com seus pais sobre suas intenções. Afinal, se era para começar uma
+          história juntos, queríamos fazer isso da maneira certa!
+        </p>
+      </div>
+
+      <!-- Fotos do pré-wedding: veja `storyPhotos` em assets/js/config.js -->
+      <div id="story-photos" class="story-photos"></div>
+
+      <div class="story">
+        <p>
+          Desde então, temos vivido muitas coisas juntos, compartilhado sonhos, aprendido um
+          com o outro e, acima de tudo, crescido na fé. Temos visto o cuidado de Deus em cada
+          etapa dessa caminhada e somos muito gratos por tudo o que Ele tem feito.
+        </p>
+        <p>
+          Agora, estamos prestes a começar um novo capítulo: formar nossa própria família!
+          Nosso desejo é construir um lar onde Cristo seja o centro, onde possamos crescer
+          juntos e onde nossa vida como marido e mulher seja vivida para a glória de Deus.
+        </p>
+        <p class="story-question">
+          Quem diria que aquele acampamento em que quase não nos falamos nos traria até aqui?
+        </p>
+      </div>
+
+      <blockquote class="verse">
+        <p>
+          Toda a glória seja dada ao Senhor, de quem, por meio de quem e para quem são todas
+          as coisas!
+        </p>
+        <cite>Romanos 11:36</cite>
+      </blockquote>
+
+      <p class="story-sign">
+        <span>Com carinho,</span>
+        Aquiles e Flavia
+      </p>
+    </section>
+
     <section id="detalhes" class="section">
       <h2 class="section-title">O grande dia</h2>
       <div class="cards">
@@ -263,6 +322,7 @@
   <script src="assets/js/config.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/rsvp.js"></script>
+  <script src="assets/js/story.js"></script>
   <script src="assets/vendor/qrcode-generator-1.4.4.js"></script>
   <script src="assets/js/pix.js"></script>
 </body>

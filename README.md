@@ -36,6 +36,25 @@ Noivos ──► admin.html + senha ──────────────�
 - **Cancelar não apaga**: a linha fica com status `Cancelado` e a data. A pessoa
   pode confirmar de novo depois.
 
+### Nossa história
+
+O texto fica direto no `index.html` (seção `#historia`). Para colocar as fotos do
+pré-wedding:
+
+1. Salve as fotos em `assets/img/historia/` (de preferência JPG, com no máximo
+   ~1600 px no lado maior, para o site continuar leve).
+2. Liste-as em `storyPhotos` no [`assets/js/config.js`](assets/js/config.js):
+
+   ```js
+   storyPhotos: [
+     { src: "assets/img/historia/foto1.jpg", alt: "Aquiles e Flavia no jardim" },
+     { src: "assets/img/historia/foto2.jpg", alt: "Aquiles e Flavia rindo" },
+   ],
+   ```
+
+Enquanto a lista estiver vazia, aparecem molduras "Fotos em breve"
+(`storyPhotoSlots` define quantas).
+
 ### Presente (Pix)
 
 A seção "Presenteie os noivos" gera o **Pix Copia e Cola** e o **QR Code** no

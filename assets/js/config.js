@@ -3,7 +3,7 @@ window.WEDDING_CONFIG = {
   // URL do Web App publicado no Google Apps Script (veja o README).
   // Enquanto estiver vazio, o formulário fica desativado com um aviso.
   // Para testar localmente use `node dev/server.js` (veja o README).
-  apiUrl: "",
+  apiUrl: "https://script.google.com/macros/s/AKfycbyDanqZ1sWej2qhazu13a3YEXbMLqsMcIQHa2QOMgFgcDGCpt0PXHFfY2HUq359is4_Qg/exec",
 
   // Data/hora da cerimônia no formato ISO (usado na contagem regressiva).
   date: "2027-08-19T16:00:00-03:00",
@@ -17,6 +17,13 @@ window.WEDDING_CONFIG = {
   dressCode: "Traje esporte fino",
 
   rsvpDeadlineLabel: "19 de junho de 2027",
+
+  // Fotos da seção "Nossa história". Coloque os arquivos em assets/img/historia/
+  // e liste aqui, por exemplo:
+  //   { src: "assets/img/historia/foto1.jpg", alt: "Aquiles e Flavia na praia" },
+  // Enquanto a lista estiver vazia, aparecem molduras "fotos em breve".
+  storyPhotos: [],
+  storyPhotoSlots: 3,
 
   // Presente via Pix. Para esconder a seção, deixe `key` vazio.
   pix: {
