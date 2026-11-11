@@ -19,14 +19,15 @@ function family(overrides = {}) {
   return {
     representante: {
       nome: "Maria Silva",
+      idade: 34,
       docTipo: "CPF",
       documento: cpf(123456789),
       telefone: "(21) 98765-4321",
       email: "maria@example.com",
     },
     membros: [
-      { nome: "João Silva", docTipo: "RG", documento: "12.345.678-9" },
-      { nome: "Pedrinho Silva", crianca: true },
+      { nome: "João Silva", idade: 34, docTipo: "RG", documento: "12.345.678-9" },
+      { nome: "Pedrinho Silva", idade: 5 },
     ],
     restricoes: "Vegetariana",
     mensagem: "Parabéns!",
@@ -62,11 +63,12 @@ test("bloqueia documento já confirmado, mesmo com outra pontuação", () => {
     data: family({
       representante: {
         nome: "Outra Pessoa",
+        idade: 34,
         docTipo: "CPF",
         documento: cpf(987654321),
         telefone: "21999998888",
       },
-      membros: [{ nome: "Joao Nome Diferente", docTipo: "RG", documento: "123456789" }],
+      membros: [{ nome: "Joao Nome Diferente", idade: 34, docTipo: "RG", documento: "123456789" }],
     }),
   });
   assert.equal(res.ok, false);
@@ -83,7 +85,7 @@ test("bloqueia nome já confirmado, ignorando acentos e maiúsculas", () => {
   const res = b.post({
     action: "rsvp",
     data: {
-      representante: { nome: "  joão   SILVA ", docTipo: "CPF", documento: cpf(111222333), telefone: "21999998888" },
+      representante: { nome: "  joão   SILVA ", idade: 34, docTipo: "CPF", documento: cpf(111222333), telefone: "21999998888" },
       membros: [],
     },
   });
@@ -104,13 +106,13 @@ test("valida CPF, nome completo, telefone e repetição no mesmo envio", () => {
   res = bad(family({ representante: { ...family().representante, telefone: "1234" } }));
   assert.match(res.error, /telefone/);
 
-  res = bad(family({ membros: [{ nome: "Adulto Sem Doc" }] }));
+  res = bad(family({ membros: [{ nome: "Adulto Sem Doc", idade: 30 }] }));
   assert.match(res.error, /informe o documento/);
 
-  res = bad(family({ membros: [{ nome: "Maria Silva", docTipo: "RG", documento: "998877665" }] }));
+  res = bad(family({ membros: [{ nome: "Maria Silva", idade: 34, docTipo: "RG", documento: "998877665" }] }));
   assert.match(res.error, /mais de uma vez/);
 
-  res = bad(family({ membros: Array.from({ length: 11 }, (_, i) => ({ nome: "Kid " + i + " X", crianca: true })) }));
+  res = bad(family({ membros: Array.from({ length: 11 }, (_, i) => ({ nome: "Kid " + i + " X", idade: 5 })) }));
   assert.match(res.error, /Máximo/);
 });
 
@@ -137,7 +139,7 @@ test("representante consulta e cancela pessoas da família", () => {
   const again = b.post({
     action: "rsvp",
     data: {
-      representante: { nome: "Pedrinho Silva", docTipo: "CPF", documento: cpf(555666777), telefone: "21911112222" },
+      representante: { nome: "Pedrinho Silva", idade: 34, docTipo: "CPF", documento: cpf(555666777), telefone: "21911112222" },
       membros: [],
     },
   });
@@ -200,7 +202,7 @@ test("status editado à mão na planilha é respeitado", () => {
   const res = b.post({
     action: "rsvp",
     data: {
-      representante: { nome: "João Silva", docTipo: "RG", documento: "123456789", telefone: "21911112222" },
+      representante: { nome: "João Silva", idade: 34, docTipo: "RG", documento: "123456789", telefone: "21911112222" },
       membros: [],
     },
   });
@@ -214,11 +216,12 @@ test("convidado de fora confirma com passaporte e telefone internacional", () =>
     data: {
       representante: {
         nome: "John Smith",
+        idade: 34,
         docTipo: "PASSAPORTE",
         documento: "X1234567",
         telefone: "+1 555 123 4567",
       },
-      membros: [{ nome: "Søren Ødegård", docTipo: "PASSAPORTE", documento: "fp-998877" }],
+      membros: [{ nome: "Søren Ødegård", idade: 34, docTipo: "PASSAPORTE", documento: "fp-998877" }],
     },
   });
   assert.equal(res.ok, true, res.error);
@@ -232,7 +235,7 @@ test("convidado de fora confirma com passaporte e telefone internacional", () =>
   const dup = b.post({
     action: "rsvp",
     data: {
-      representante: { nome: "Outra Pessoa", docTipo: "PASSAPORTE", documento: "x-123.4567", telefone: "+44 20 7946 0958" },
+      representante: { nome: "Outra Pessoa", idade: 34, docTipo: "PASSAPORTE", documento: "x-123.4567", telefone: "+44 20 7946 0958" },
       membros: [],
     },
   });
@@ -247,7 +250,7 @@ test("convidado de fora confirma com passaporte e telefone internacional", () =>
 test("passaporte e telefone internacional inválidos são recusados", () => {
   const b = createBackend();
   const rep = (over) => ({
-    representante: { nome: "John Smith", docTipo: "PASSAPORTE", documento: "X1234567", telefone: "+1 555 123 4567", ...over },
+    representante: { nome: "John Smith", idade: 34, docTipo: "PASSAPORTE", documento: "X1234567", telefone: "+1 555 123 4567", ...over },
     membros: [],
   });
   assert.match(b.post({ action: "rsvp", data: rep({ documento: "ABC" }) }).error, /Passaporte inválido/);
@@ -258,7 +261,7 @@ test("passaporte e telefone internacional inválidos são recusados", () => {
 test("nomes em outros alfabetos funcionam e só números não é nome", () => {
   const b = createBackend();
   const rep = (nome, documento) => ({
-    representante: { nome, docTipo: "PASSAPORTE", documento, telefone: "+81 90 1234 5678" },
+    representante: { nome, idade: 40, docTipo: "PASSAPORTE", documento, telefone: "+81 90 1234 5678" },
     membros: [],
   });
   assert.equal(b.post({ action: "rsvp", data: rep("山田 太郎", "TK1234567") }).ok, true);
@@ -335,4 +338,61 @@ test("noivos apagam pessoas e a planilha fica consistente", () => {
     data: { representante: { ...family().representante }, membros: [] },
   });
   assert.equal(again.ok, true, again.error);
+});
+
+test("idade é obrigatória, define criança e vai para a planilha", () => {
+  const b = createBackend();
+  const fam = (membros, repIdade = 34) =>
+    b.post({ action: "rsvp", data: family({ representante: { ...family().representante, idade: repIdade }, membros }) });
+
+  assert.match(fam([{ nome: "Sem Idade Silva", docTipo: "RG", documento: "998877665" }]).error, /informe a idade/);
+  assert.match(fam([{ nome: "Idade Errada", idade: "abc", docTipo: "RG", documento: "998877665" }]).error, /idade inválida/);
+  assert.match(fam([{ nome: "Idade Errada", idade: 130, docTipo: "RG", documento: "998877665" }]).error, /idade inválida/);
+  assert.match(fam([], 10).error, /Representante: precisa ter mais de 12 anos/);
+  // Com 13 anos já precisa de documento.
+  assert.match(fam([{ nome: "Teen Silva", idade: 13 }]).error, /informe o documento/);
+
+  // 12 anos é criança (sem documento); "criança: true" com idade adulta é ignorado.
+  const res = fam([
+    { nome: "Kid Silva", idade: "12" },
+    { nome: "Adulto Silva", idade: 40, crianca: true, docTipo: "RG", documento: "998877665" },
+  ]);
+  assert.equal(res.ok, true, res.error);
+  const list = b.post({ action: "list", password: "senha-teste" }).pessoas;
+  const by = Object.fromEntries(list.map((p) => [p.nome, p]));
+  assert.equal(by["Maria Silva"].idade, 34);
+  assert.equal(by["Kid Silva"].idade, 12);
+  assert.equal(by["Kid Silva"].crianca, "Sim");
+  assert.equal(by["Adulto Silva"].crianca, "Não");
+  assert.equal(b.sheet().data[0][15], "Idade", "coluna nova no final");
+});
+
+test("noivos podem adicionar sem idade; com idade, ela define criança", () => {
+  const b = createBackend();
+  const { familia } = b.post({ action: "rsvp", data: family() });
+  const add = (data) => b.post({ action: "adminAdd", password: "senha-teste", data: { familia, ...data } });
+  assert.equal(add({ nome: "Sem Idade Silva" }).ok, true);
+  assert.equal(add({ nome: "Bebe Silva", idade: 1 }).ok, true);
+  assert.equal(add({ nome: "Marcado Silva", crianca: true }).ok, true);
+  const by = Object.fromEntries(b.post({ action: "list", password: "senha-teste" }).pessoas.map((p) => [p.nome, p]));
+  assert.equal(by["Sem Idade Silva"].idade, "");
+  assert.equal(by["Bebe Silva"].crianca, "Sim");
+  assert.equal(by["Marcado Silva"].crianca, "Sim");
+});
+
+test("planilha criada antes da coluna Idade ganha o cabeçalho sem perder linhas", () => {
+  const b = createBackend();
+  b.post({ action: "rsvp", data: family() });
+  // Simula a planilha antiga: sem cabeçalho nem valores na coluna 16.
+  b.sheet().data.forEach((row) => (row.length = 15));
+  const res = b.post({
+    action: "rsvp",
+    data: { representante: { nome: "Nova Pessoa", idade: 50, docTipo: "CPF", documento: cpf(333444555), telefone: "21933334444" }, membros: [] },
+  });
+  assert.equal(res.ok, true, res.error);
+  assert.equal(b.sheet().data[0][15], "Idade");
+  const list = b.post({ action: "list", password: "senha-teste" }).pessoas;
+  assert.equal(list.length, 4);
+  assert.equal(list[0].idade, "", "linha antiga continua sem idade");
+  assert.equal(list[3].idade, 50);
 });

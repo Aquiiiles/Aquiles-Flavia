@@ -106,6 +106,18 @@
     phone.value = out;
   });
 
+  // Até essa idade conta como criança (igual ao CHILD_MAX_AGE do Code.gs).
+  const CHILD_MAX_AGE = 12;
+  const isChild = (idade) => idade !== "" && Number(idade) <= CHILD_MAX_AGE;
+
+  /** Idade: só números, até 3 dígitos. */
+  function bindAgeInput(input) {
+    input.addEventListener("input", () => {
+      input.value = onlyDigits(input.value).slice(0, 3);
+    });
+  }
+
+  bindAgeInput($("#rep-idade"));
   bindDocInput($("#rep-doc-tipo"), $("#rep-doc"));
   bindDocInput($("#lookup-doc-tipo"), $("#lookup-doc"));
 
@@ -129,12 +141,17 @@
   function addMember() {
     const card = template.content.firstElementChild.cloneNode(true);
     const uid = "m" + Date.now() + Math.random().toString(36).slice(2, 6);
-    const [nomeLabel, docLabel] = $$(".field > label", card);
+    const [nomeLabel, idadeLabel, docLabel] = $$(".field > label", card);
     $(".m-nome", card).id = nomeLabel.htmlFor = uid + "-nome";
+    $(".m-idade", card).id = idadeLabel.htmlFor = uid + "-idade";
     $(".m-doc", card).id = docLabel.htmlFor = uid + "-doc";
     bindDocInput($(".m-doc-tipo", card), $(".m-doc", card));
-    $(".m-crianca", card).addEventListener("change", (ev) => {
-      $(".m-doc-req", card).hidden = ev.target.checked;
+    bindAgeInput($(".m-idade", card));
+    // Criança (até 12 anos) não precisa de documento.
+    $(".m-idade", card).addEventListener("input", (ev) => {
+      const child = isChild(ev.target.value);
+      $(".m-doc-req", card).hidden = child;
+      $(".m-doc-opt", card).hidden = !child;
     });
     $(".remove-member", card).addEventListener("click", () => {
       card.remove();
@@ -172,15 +189,27 @@
     card.classList.toggle("has-error", Boolean(msg));
   }
 
+  // Ao corrigir um campo, some o aviso de erro daquela pessoa.
+  form.addEventListener("input", (ev) => {
+    const card = ev.target.closest(".person");
+    if (card && card.classList.contains("has-error")) setPersonError(card, "");
+  });
+
   function validateName(nome) {
     const words = nome.replace(/[^\p{L}\s]/gu, "").split(/\s+/).filter(Boolean);
     return words.length >= 2 ? "" : "Informe nome e sobrenome.";
+  }
+
+  function validateAge(idade) {
+    if (!idade) return "Informe a idade.";
+    return Number(idade) <= 120 ? "" : "Idade inválida.";
   }
 
   function collect() {
     const errors = [];
     const rep = {
       nome: $("#rep-nome").value.trim(),
+      idade: $("#rep-idade").value.trim(),
       docTipo: $("#rep-doc-tipo").value,
       documento: $("#rep-doc").value.trim(),
       telefone: phone.value.trim(),
@@ -188,6 +217,8 @@
     };
     errors.push(
       validateName(rep.nome) ||
+        validateAge(rep.idade) ||
+        (isChild(rep.idade) ? "O representante precisa ter mais de " + CHILD_MAX_AGE + " anos." : "") ||
         validateDoc(rep.docTipo, rep.documento) ||
         (onlyDigits(rep.telefone).length < (isInternational(rep.telefone) ? 8 : 10)
           ? "Informe um telefone com DDD (ou com + e o código do país)."
@@ -195,14 +226,16 @@
     );
 
     const membros = $$(".person", members).map((card) => {
+      const idade = $(".m-idade", card).value.trim();
       const m = {
         nome: $(".m-nome", card).value.trim(),
-        crianca: $(".m-crianca", card).checked,
+        idade,
+        crianca: isChild(idade),
         docTipo: $(".m-doc-tipo", card).value,
         documento: $(".m-doc", card).value.trim(),
       };
       const docError = m.crianca && !m.documento ? "" : validateDoc(m.docTipo, m.documento);
-      errors.push(validateName(m.nome) || docError);
+      errors.push(validateName(m.nome) || validateAge(idade) || docError);
       return m;
     });
 

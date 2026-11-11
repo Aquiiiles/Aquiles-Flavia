@@ -39,7 +39,12 @@ const COLUMNS = [
   ['restricoes', 'Restrições alimentares'],
   ['mensagem', 'Mensagem'],
   ['canceladoEm', 'Cancelado em'],
+  // Colunas novas entram sempre no final, para não desalinhar linhas antigas.
+  ['idade', 'Idade'],
 ];
+
+// Até essa idade a pessoa conta como criança (e não precisa de documento).
+const CHILD_MAX_AGE = 12;
 
 // Proteção contra força bruta na senha e varredura de documentos.
 const MAX_FAILED_LOGINS = 10;
@@ -110,6 +115,7 @@ function saveRsvp(input) {
         nome: p.nome,
         papel: isRep ? ROLE_REP : ROLE_MEMBER,
         crianca: p.crianca ? 'Sim' : 'Não',
+        idade: p.idade,
         docTipo: p.docTipo,
         documento: p.documento,
         representante: rsvp.representante.nome,
@@ -193,6 +199,15 @@ function validateRsvp(input) {
   };
 }
 
+/** Idade em anos inteiros (0 a 120); '' quando não informada. */
+function parseAge(value, label) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw) return '';
+  const idade = Number(raw);
+  if (!/^\d{1,3}$/.test(raw) || idade > 120) throw userError(label + ': idade inválida.');
+  return idade;
+}
+
 function validatePhone(value) {
   const telefone = str(value, 30);
   const phoneDigits = digits(telefone);
@@ -214,8 +229,8 @@ function validateEmail(value) {
 }
 
 /**
- * Valida uma pessoa. `allowChild`: pode ser marcada como criança (e aí vir
- * sem documento). `docOptional`: documento opcional para qualquer um (usado
+ * Valida uma pessoa. `allowChild`: pode ser criança (até CHILD_MAX_AGE anos,
+ * e aí vir sem documento). `docOptional`: documento e idade opcionais (usado
  * quando os noivos adicionam alguém pela área deles).
  */
 function validatePerson(p, label, allowChild, docOptional) {
@@ -224,13 +239,19 @@ function validatePerson(p, label, allowChild, docOptional) {
     throw userError(label + ': informe nome e sobrenome.');
   }
 
-  const crianca = allowChild && p.crianca === true;
+  const idade = parseAge(p.idade, label);
+  if (idade === '' && !docOptional) throw userError(label + ': informe a idade.');
+  if (!allowChild && idade !== '' && idade <= CHILD_MAX_AGE) {
+    throw userError(label + ': precisa ter mais de ' + CHILD_MAX_AGE + ' anos.');
+  }
+  // Com idade, "criança" sai dela; sem idade (noivos), vale a caixa marcada.
+  const crianca = allowChild && (idade !== '' ? idade <= CHILD_MAX_AGE : p.crianca === true);
   const docTipo = parseDocType(p.docTipo);
   const rawDoc = str(p.documento, 30);
 
   // Sem documento, a checagem de duplicidade é só pelo nome.
   if (!rawDoc && (crianca || docOptional)) {
-    return { nome: nome, crianca: crianca, docTipo: '', documento: '', docKey: '', nameKey: nameKey(nome) };
+    return { nome: nome, idade: idade, crianca: crianca, docTipo: '', documento: '', docKey: '', nameKey: nameKey(nome) };
   }
   if (!rawDoc) throw userError(label + ': informe o documento.');
 
@@ -239,6 +260,7 @@ function validatePerson(p, label, allowChild, docOptional) {
 
   return {
     nome: nome,
+    idade: idade,
     crianca: crianca,
     docTipo: docTipo,
     documento: documento,
@@ -365,6 +387,7 @@ function adminAdd(password, input) {
       status: STATUS_CONFIRMED,
       nome: person.nome,
       crianca: person.crianca ? 'Sim' : 'Não',
+      idade: person.idade,
       docTipo: person.docTipo,
       documento: person.documento,
       telefone: '',
@@ -455,8 +478,18 @@ function getSheet() {
       .setValues([COLUMNS.map(([, header]) => header)])
       .setFontWeight('bold');
     sheet.setFrozenRows(1);
+  } else {
+    ensureHeaders(sheet);
   }
   return sheet;
+}
+
+/** Escreve cabeçalhos de colunas novas em planilhas criadas antes delas. */
+function ensureHeaders(sheet) {
+  const range = sheet.getRange(1, 1, 1, COLUMNS.length);
+  const current = range.getValues()[0];
+  if (current.every((v, i) => v !== '' || !COLUMNS[i])) return;
+  range.setValues([COLUMNS.map(([, header], i) => current[i] || header)]).setFontWeight('bold');
 }
 
 /** Lê todas as linhas como objetos; `_row` guarda o número da linha. */

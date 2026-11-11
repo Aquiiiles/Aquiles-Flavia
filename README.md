@@ -26,7 +26,9 @@ Noivos ──► admin.html + senha ──────────────�
   passaporte aceitam letras e números, já que o formato muda por estado e país.
 - **Convidados de fora**: usam passaporte e podem informar telefone internacional
   começando com `+` e o código do país (ex.: `+1 555 123 4567`).
-- **Crianças (até 12 anos)** podem ir sem documento.
+- **Idade de cada pessoa** é obrigatória. Quem tem até 12 anos conta como
+  **criança** automaticamente e pode ir sem documento. O representante precisa
+  ter mais de 12 anos.
 - **Duplicidade**: uma pessoa é recusada se o documento **ou** o nome (ignorando
   acentos e maiúsculas) já estiver confirmado. O site mostra qual pessoa foi
   recusada e em qual família ela já está.
@@ -82,7 +84,9 @@ Toda ação passa pela senha (`ADMIN_PASSWORD`) no servidor.
 Os dados ficam na aba **`Confirmacoes`** (criada pelo `setup`), não na primeira
 aba da planilha. Cada linha é **uma pessoa**. Colunas: ID, Código da família, Data/Hora, Status,
 Nome, Tipo (Representante/Acompanhante), Criança, Tipo de documento, Documento,
-Representante, Telefone, E-mail, Restrições alimentares, Mensagem, Cancelado em.
+Representante, Telefone, E-mail, Restrições alimentares, Mensagem, Cancelado em,
+Idade. Colunas novas sempre entram no final, e o script escreve o cabeçalho delas
+sozinho em planilhas criadas antes.
 
 Vocês podem editar à mão: trocar o Status para `Cancelado` libera aquela pessoa
 para confirmar de novo. Não mudem a ordem das colunas nem o ID.

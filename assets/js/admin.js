@@ -139,6 +139,7 @@
           cell(p.nome, "strong"),
           badge(confirmed ? "Confirmado" : "Cancelado", confirmed ? "yes" : "no"),
           cell(tipo),
+          cell(p.idade === "" || p.idade == null ? "–" : p.idade, "num"),
           cell(p.documento ? docLabel(p.docTipo) + " " + p.documento : "–", "nowrap"),
           cell(p.papel === "Representante" ? "–" : p.representante),
           cell(p.telefone, "nowrap"),
@@ -261,6 +262,7 @@
       await window.Api.adminAdd(password(), {
         nome,
         familia: familySelect.value,
+        idade: $("#add-idade").value.trim(),
         crianca: $("#add-crianca").checked,
         docTipo: $("#add-doc-tipo").value,
         documento: $("#add-doc").value.trim(),
@@ -289,6 +291,7 @@
       ["Nome", (p) => p.nome],
       ["Status", (p) => p.status],
       ["Tipo", (p) => p.papel],
+      ["Idade", (p) => p.idade],
       ["Criança", (p) => p.crianca],
       ["Tipo de documento", (p) => p.docTipo],
       ["Documento", (p) => p.documento],

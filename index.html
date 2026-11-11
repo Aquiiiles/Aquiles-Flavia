@@ -149,9 +149,15 @@
 
           <fieldset class="person person-rep">
             <legend>Representante da família</legend>
-            <div class="field">
-              <label for="rep-nome">Nome completo *</label>
-              <input id="rep-nome" type="text" required maxlength="100" autocomplete="name">
+            <div class="field-row field-row-age">
+              <div class="field">
+                <label for="rep-nome">Nome completo *</label>
+                <input id="rep-nome" type="text" required maxlength="100" autocomplete="name">
+              </div>
+              <div class="field">
+                <label for="rep-idade">Idade *</label>
+                <input id="rep-idade" type="text" inputmode="numeric" required maxlength="3" autocomplete="off">
+              </div>
             </div>
             <div class="field">
               <label for="rep-doc">Documento *</label>
@@ -252,16 +258,18 @@
         <fieldset class="person">
           <legend>Acompanhante <span class="member-n"></span></legend>
           <button type="button" class="remove-member" aria-label="Remover acompanhante">&times;</button>
-          <div class="field">
-            <label>Nome completo *</label>
-            <input class="m-nome" type="text" required maxlength="100" autocomplete="off">
+          <div class="field-row field-row-age">
+            <div class="field">
+              <label>Nome completo *</label>
+              <input class="m-nome" type="text" required maxlength="100" autocomplete="off">
+            </div>
+            <div class="field">
+              <label>Idade *</label>
+              <input class="m-idade" type="text" inputmode="numeric" required maxlength="3" autocomplete="off">
+            </div>
           </div>
-          <label class="check">
-            <input class="m-crianca" type="checkbox">
-            <span>É criança (até 12 anos). Documento opcional.</span>
-          </label>
           <div class="field">
-            <label>Documento <span class="m-doc-req">*</span></label>
+            <label>Documento <span class="m-doc-req">*</span><span class="m-doc-opt" hidden>(opcional para crianças até 12 anos)</span></label>
             <div class="doc-input">
               <select class="m-doc-tipo" aria-label="Tipo de documento">
                 <option value="CPF">CPF</option>

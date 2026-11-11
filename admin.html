@@ -51,6 +51,10 @@
           <input id="add-nome" type="text" required maxlength="100" autocomplete="off">
         </div>
         <div class="field">
+          <label for="add-idade">Idade</label>
+          <input id="add-idade" type="text" inputmode="numeric" maxlength="3" autocomplete="off">
+        </div>
+        <div class="field">
           <label for="add-familia">Família</label>
           <select id="add-familia"></select>
         </div>
@@ -80,7 +84,7 @@
       </div>
       <label class="check">
         <input id="add-crianca" type="checkbox">
-        <span>É criança (até 12 anos)</span>
+        <span>É criança (até 12 anos). Se preencher a idade, isso é automático.</span>
       </label>
       <div class="admin-add-actions">
         <button id="add-cancel" type="button" class="btn btn-link">Fechar</button>
@@ -114,6 +118,7 @@
             <th>Nome</th>
             <th>Status</th>
             <th>Tipo</th>
+            <th>Idade</th>
             <th>Documento</th>
             <th>Representante</th>
             <th>Telefone</th>
