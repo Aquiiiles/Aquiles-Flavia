@@ -20,6 +20,7 @@ const STATUS_CONFIRMED = 'Confirmado';
 const STATUS_CANCELLED = 'Cancelado';
 const ROLE_REP = 'Representante';
 const ROLE_MEMBER = 'Acompanhante';
+const DOC_TYPES = ['CPF', 'RG', 'PASSAPORTE'];
 
 // Ordem das colunas na planilha: [chave interna, cabeçalho].
 const COLUMNS = [
@@ -153,8 +154,11 @@ function validateRsvp(input) {
   const representante = validatePerson(rep, 'Representante', false);
   const telefone = str(rep.telefone, 30);
   const phoneDigits = digits(telefone);
-  if (phoneDigits.length < 10 || phoneDigits.length > 13) {
-    throw userError('Informe um telefone válido com DDD.');
+  // Telefone de fora começa com "+" e o código do país (formato internacional).
+  const international = telefone.charAt(0) === '+';
+  const [minDigits, maxDigits] = international ? [8, 15] : [10, 13];
+  if (phoneDigits.length < minDigits || phoneDigits.length > maxDigits) {
+    throw userError('Informe um telefone válido com DDD (ou com + e o código do país).');
   }
   representante.telefone = telefone;
 
@@ -192,22 +196,22 @@ function validateRsvp(input) {
 
 function validatePerson(p, label, allowChild) {
   const nome = str(p.nome, 100).replace(/\s+/g, ' ');
-  if (nome.split(' ').filter(Boolean).length < 2) {
+  if (nameKey(nome).split(' ').filter(Boolean).length < 2) {
     throw userError(label + ': informe nome e sobrenome.');
   }
 
   const crianca = allowChild && p.crianca === true;
-  const docTipo = p.docTipo === 'RG' ? 'RG' : 'CPF';
+  const docTipo = parseDocType(p.docTipo);
   const rawDoc = str(p.documento, 30);
 
   // Criança pode vir sem documento; nesse caso a checagem é só pelo nome.
   if (!rawDoc && crianca) {
     return { nome: nome, crianca: true, docTipo: '', documento: '', docKey: '', nameKey: nameKey(nome) };
   }
-  if (!rawDoc) throw userError(label + ': informe o ' + docTipo + '.');
+  if (!rawDoc) throw userError(label + ': informe o documento.');
 
   const documento = formatDocument(docTipo, rawDoc);
-  if (!documento) throw userError(label + ': ' + docTipo + ' inválido.');
+  if (!documento) throw userError(label + ': ' + docLabel(docTipo) + ' inválido.');
 
   return {
     nome: nome,
@@ -247,7 +251,7 @@ function findManageable(rows, docTipo, documento) {
 
 function lookup(input) {
   throttleLookups();
-  const docTipo = input.docTipo === 'RG' ? 'RG' : 'CPF';
+  const docTipo = parseDocType(input.docTipo);
   const rows = readRows(getSheet());
   const result = findManageable(rows, docTipo, str(input.documento, 30));
 
@@ -268,7 +272,7 @@ function lookup(input) {
 
 function cancel(input) {
   throttleLookups();
-  const docTipo = input.docTipo === 'RG' ? 'RG' : 'CPF';
+  const docTipo = parseDocType(input.docTipo);
   const ids = Array.isArray(input.ids) ? input.ids.map(String) : [];
   if (!ids.length) throw userError('Selecione quem não poderá ir.');
 
@@ -423,6 +427,15 @@ function withLock(fn) {
 // Documentos e nomes
 // ---------------------------------------------------------------------------
 
+function parseDocType(v) {
+  const tipo = String(v || '').toUpperCase();
+  return DOC_TYPES.indexOf(tipo) >= 0 ? tipo : 'CPF';
+}
+
+function docLabel(docTipo) {
+  return docTipo === 'PASSAPORTE' ? 'Passaporte' : docTipo;
+}
+
 /** Formata o documento para gravar; devolve '' se for inválido. */
 function formatDocument(docTipo, raw) {
   if (docTipo === 'CPF') {
@@ -430,26 +443,31 @@ function formatDocument(docTipo, raw) {
     if (!isValidCpf(d)) return '';
     return d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9);
   }
-  const rg = String(raw).toUpperCase().replace(/[^0-9A-Z]/g, '');
-  if (rg.length < 5 || rg.length > 14 || !/\d/.test(rg)) return '';
-  return rg;
+  // RG e passaporte variam muito (por estado/país): letras e números.
+  const doc = String(raw).toUpperCase().replace(/[^0-9A-Z]/g, '');
+  const max = docTipo === 'PASSAPORTE' ? 20 : 14;
+  if (doc.length < 5 || doc.length > max || !/\d/.test(doc)) return '';
+  return doc;
 }
 
 /** Chave usada para comparar documentos (ignora pontuação). */
 function docKey(docTipo, documento) {
   const tipo = String(docTipo || '').toUpperCase();
   const clean = String(documento || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
-  if (!clean || (tipo !== 'CPF' && tipo !== 'RG')) return '';
+  if (!clean || DOC_TYPES.indexOf(tipo) < 0) return '';
   return tipo + ':' + clean;
 }
 
-/** Chave usada para comparar nomes: sem acento, minúsculo, espaços únicos. */
+/**
+ * Chave usada para comparar nomes: sem acento, minúsculo, espaços únicos.
+ * Aceita letras de qualquer alfabeto (convidados estrangeiros).
+ */
 function nameKey(nome) {
   return String(nome || '')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/[^a-z\s]/g, '')
+    .replace(/[^\p{L}\s]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

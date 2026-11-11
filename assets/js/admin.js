@@ -80,6 +80,10 @@
     render();
   });
 
+  function docLabel(tipo) {
+    return tipo === "PASSAPORTE" ? "Passaporte" : tipo;
+  }
+
   function formatDate(ts) {
     const d = new Date(ts);
     return ts && !isNaN(d) ? d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
@@ -133,7 +137,7 @@
           cell(p.nome, "strong"),
           badge(confirmed ? "Confirmado" : "Cancelado", confirmed ? "yes" : "no"),
           cell(tipo),
-          cell(p.documento ? p.docTipo + " " + p.documento : "–", "nowrap"),
+          cell(p.documento ? docLabel(p.docTipo) + " " + p.documento : "–", "nowrap"),
           cell(p.papel === "Representante" ? "–" : p.representante),
           cell(p.telefone, "nowrap"),
           cell(p.email),

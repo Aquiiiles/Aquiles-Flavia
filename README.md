@@ -21,8 +21,11 @@ Noivos ──► admin.html + senha ──────────────�
 
 - **Representante da família**: uma pessoa confirma por todos. Só ela informa
   telefone e e-mail.
-- **Documento (CPF ou RG) de cada pessoa**: é o que impede confirmar a mesma
-  pessoa duas vezes. O CPF é validado pelos dígitos verificadores.
+- **Documento de cada pessoa (CPF, RG ou passaporte)**: é o que impede confirmar
+  a mesma pessoa duas vezes. O CPF é validado pelos dígitos verificadores; RG e
+  passaporte aceitam letras e números, já que o formato muda por estado e país.
+- **Convidados de fora**: usam passaporte e podem informar telefone internacional
+  começando com `+` e o código do país (ex.: `+1 555 123 4567`).
 - **Crianças (até 12 anos)** podem ir sem documento.
 - **Duplicidade**: uma pessoa é recusada se o documento **ou** o nome (ignorando
   acentos e maiúsculas) já estiver confirmado. O site mostra qual pessoa foi
@@ -32,6 +35,17 @@ Noivos ──► admin.html + senha ──────────────�
   presença. Os nomes aparecem abreviados ("Maria S.") para não expor ninguém.
 - **Cancelar não apaga**: a linha fica com status `Cancelado` e a data. A pessoa
   pode confirmar de novo depois.
+
+### Presente (Pix)
+
+A seção "Presenteie os noivos" gera o **Pix Copia e Cola** e o **QR Code** no
+próprio navegador (padrão BR Code do Banco Central), com valor livre, valores
+sugeridos ou um valor digitado pelo convidado. A chave, o nome, a cidade e os
+valores sugeridos ficam em `pix` no [`assets/js/config.js`](assets/js/config.js).
+Deixar `key` vazio esconde a seção.
+
+O gerador de QR Code (`assets/vendor/qrcode-generator-1.4.4.js`, licença MIT)
+fica dentro do site, sem depender de CDN.
 
 ### A planilha
 
@@ -82,7 +96,7 @@ Precisa só de Node.js (18+). O backend roda localmente com uma simulação dos
 serviços do Google (`dev/gas-mock.js`), usando o mesmo `Code.gs`.
 
 ```bash
-npm test          # testes do backend (duplicidade, cancelamento, senha...)
+npm test          # testes do backend e do gerador de Pix
 npm run dev       # site + backend simulado em http://localhost:8000
                   # senha da área dos noivos: "teste"
 ```
