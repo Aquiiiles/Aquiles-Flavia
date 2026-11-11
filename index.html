@@ -16,7 +16,8 @@
   <nav class="nav">
     <a href="#inicio">Início</a>
     <a href="#detalhes">Detalhes</a>
-    <a href="#confirmar">Confirmar presença</a>
+    <a href="#confirmar">Confirmar<span class="nav-long"> presença</span></a>
+    <a href="#presente">Presente</a>
   </nav>
 
   <header id="inicio" class="hero">
@@ -212,6 +213,42 @@
         </fieldset>
       </template>
     </section>
+
+    <section id="presente" class="section section-gift">
+      <h2 class="section-title">Presenteie os noivos</h2>
+      <p class="section-sub">
+        Sua presença já é o nosso maior presente. Mas, se quiser nos mimar e
+        ajudar a começar essa nova fase, ficaremos muito felizes com um Pix.
+      </p>
+
+      <div class="gift-card">
+        <div class="gift-qr">
+          <div id="pix-qr" class="qr-box"></div>
+          <p id="pix-amount-label" class="muted small"></p>
+        </div>
+
+        <div class="gift-info">
+          <p class="gift-step">1. Escolha um valor (opcional)</p>
+          <div id="pix-amounts" class="tabs gift-amounts">
+            <button type="button" class="tab active" data-amount="0">Valor livre</button>
+            <label class="amount-input">
+              <span>R$</span>
+              <input id="pix-custom" type="text" inputmode="decimal" placeholder="Outro valor" maxlength="10" aria-label="Outro valor em reais">
+            </label>
+          </div>
+
+          <p class="gift-step">2. Pague pelo app do seu banco</p>
+          <p class="small muted">Aponte a câmera para o QR Code ou use o Pix Copia e Cola:</p>
+          <textarea id="pix-code" class="pix-code" rows="3" readonly aria-label="Código Pix Copia e Cola"></textarea>
+          <button id="pix-copy" type="button" class="btn btn-primary btn-block">Copiar código Pix</button>
+
+          <p class="small muted pix-key-line">
+            Ou use a chave Pix: <code id="pix-key"></code>
+            <button id="pix-copy-key" type="button" class="btn-inline">Copiar chave</button>
+          </p>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -223,5 +260,7 @@
   <script src="assets/js/config.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/rsvp.js"></script>
+  <script src="assets/vendor/qrcode-generator-1.4.4.js"></script>
+  <script src="assets/js/pix.js"></script>
 </body>
 </html>

@@ -33,6 +33,17 @@ Noivos ──► admin.html + senha ──────────────�
 - **Cancelar não apaga**: a linha fica com status `Cancelado` e a data. A pessoa
   pode confirmar de novo depois.
 
+### Presente (Pix)
+
+A seção "Presenteie os noivos" gera o **Pix Copia e Cola** e o **QR Code** no
+próprio navegador (padrão BR Code do Banco Central), com valor livre, valores
+sugeridos ou um valor digitado pelo convidado. A chave, o nome, a cidade e os
+valores sugeridos ficam em `pix` no [`assets/js/config.js`](assets/js/config.js).
+Deixar `key` vazio esconde a seção.
+
+O gerador de QR Code (`assets/vendor/qrcode-generator-1.4.4.js`, licença MIT)
+fica dentro do site, sem depender de CDN.
+
 ### A planilha
 
 Cada linha é **uma pessoa**. Colunas: ID, Código da família, Data/Hora, Status,
@@ -82,7 +93,7 @@ Precisa só de Node.js (18+). O backend roda localmente com uma simulação dos
 serviços do Google (`dev/gas-mock.js`), usando o mesmo `Code.gs`.
 
 ```bash
-npm test          # testes do backend (duplicidade, cancelamento, senha...)
+npm test          # testes do backend e do gerador de Pix
 npm run dev       # site + backend simulado em http://localhost:8000
                   # senha da área dos noivos: "teste"
 ```

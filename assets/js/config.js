@@ -18,6 +18,17 @@ window.WEDDING_CONFIG = {
 
   rsvpDeadlineLabel: "19 de junho de 2027",
 
+  // Presente via Pix. Para esconder a seção, deixe `key` vazio.
+  pix: {
+    key: "22946f21-cb3c-4ba5-b720-43b1fce62bdb",
+    // Nome e cidade vão dentro do código Pix (sem acento, até 25 e 15 letras).
+    // O app do banco mostra o nome do titular da chave de qualquer forma.
+    name: "Aquiles e Flavia",
+    city: "Rio de Janeiro",
+    description: "Presente casamento",
+    suggestedAmounts: [100, 200, 300, 500],
+  },
+
   // Máximo de acompanhantes por família (igual ao MAX_COMPANIONS do Code.gs).
   maxCompanions: 10,
 };
